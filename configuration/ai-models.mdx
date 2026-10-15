@@ -1,5 +1,5 @@
 ---
-title: "AI Model Configuration: Connect Your LLM Provider"
+title: "AI Model Configuration: Connect Your LLM Provider in Clerisy"
 sidebarTitle: "AI Models"
 description: "Clerisy is bring-your-own-model. Connect Anthropic, OpenAI, Google, OpenRouter, Ollama, or any OpenAI-compatible server in Settings → AI Model."
 ---
@@ -9,22 +9,22 @@ Clerisy does not bundle or proxy an AI model — you bring your own. Every Impac
 ## Supported providers
 
 <CardGroup cols={2}>
-  <Card title="Anthropic (Claude)" icon="robot">
+  <Card title="Anthropic (Claude)" icon="robot" href="https://console.anthropic.com/">
     Industry-leading reasoning and instruction-following. Recommended for most users. Default model: `claude-sonnet-5-5`.
   </Card>
-  <Card title="OpenAI" icon="microchip">
+  <Card title="OpenAI" icon="microchip" href="https://platform.openai.com/">
     GPT family models. Default model: `gpt-5`. Uses the same API key as OpenAI Whisper STT if both are configured.
   </Card>
-  <Card title="Google (Gemini)" icon="google">
+  <Card title="Google (Gemini)" icon="google" href="https://aistudio.google.com/">
     Gemini models with large context windows. Default model: `gemini-2.5-pro`. Requires a Google AI Studio API key.
   </Card>
-  <Card title="OpenRouter" icon="shuffle">
+  <Card title="OpenRouter" icon="shuffle" href="https://openrouter.ai/">
     Access hundreds of models from a single API key. Default model: `anthropic/claude-sonnet-5.5`.
   </Card>
-  <Card title="Ollama (local)" icon="house-laptop">
+  <Card title="Ollama (local)" icon="house-laptop" href="https://ollama.com/">
     Run models entirely on your own machine — no API key, no data leaves your computer. Default model: `qwen3:14b`. Requires Ollama running locally.
   </Card>
-  <Card title="OpenAI-compatible" icon="plug">
+  <Card title="OpenAI-compatible" icon="plug" href="https://lmstudio.ai/">
     Any server that speaks the OpenAI chat completions API: LM Studio, vLLM, text-generation-webui, and others. Set a base URL and an optional key.
   </Card>
 </CardGroup>

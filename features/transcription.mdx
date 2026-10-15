@@ -1,7 +1,7 @@
 ---
 title: "Speech-to-Text: Local and Cloud Transcription Options"
 sidebarTitle: "Transcription"
-description: "Choose free local transcription or cloud STT — Deepgram, OpenAI Whisper, or Groq — for better speed, accuracy, and multi-language meeting support."
+description: "Choose free local transcription or a cloud STT provider — Deepgram, OpenAI Whisper, or Groq — for better speed, accuracy, and language support."
 ---
 
 Clerisy uses a two-pass transcription approach. During recording, audio is broken into roughly 30-second chunks and transcribed in near-real time so you can follow along in the transcript pane. When the recording ends, both the mic and system audio files are transcribed again in full — this second pass produces consistent speaker labels across the whole meeting and replaces the chunked preview. You can choose between a free local engine that runs entirely on your machine or one of three cloud providers, depending on your accuracy, language, and privacy requirements.
@@ -10,20 +10,20 @@ Clerisy uses a two-pass transcription approach. During recording, audio is broke
 
 The local engine is powered by **sherpa-onnx** and runs entirely on your Windows machine. No audio ever leaves your computer, and no API key is required.
 
-<CardGroup cols={2}>
-  <Card title="Cost" icon="circle-dollar">
+<AccordionGroup>
+  <Accordion title="Cost">
     Free. No API key, no usage billing.
-  </Card>
-  <Card title="Download" icon="download">
+  </Accordion>
+  <Accordion title="Download">
     One-time 665 MB download from Settings → Transcription before first use.
-  </Card>
-  <Card title="Language" icon="language">
+  </Accordion>
+  <Accordion title="Language">
     English only. Use a cloud provider or language routing for other languages.
-  </Card>
-  <Card title="Speaker labels" icon="users">
+  </Accordion>
+  <Accordion title="Speaker labels">
     Labels other participants as Speaker 1, Speaker 2… after the meeting ends.
-  </Card>
-</CardGroup>
+  </Accordion>
+</AccordionGroup>
 
 When your computer is slow, the local engine keeps only the newest waiting chunk per stream and skips older ones rather than falling further behind. The live preview may be gappy on slower machines, but the final full-file pass always completes.
 
@@ -133,12 +133,8 @@ If you already have a transcript — or want to add a past meeting — you can i
   ```
 </Accordion>
 
-<Accordion title="Audio files (mp3, m4a, wav, webm, ogg)">
-  Clerisy sends the file to your configured STT provider and creates a new meeting from the result. Requires a speech-to-text provider to be configured. File-size limits apply: OpenAI and Groq accept up to 25 MB; Deepgram accepts up to 2 GB.
-</Accordion>
-
-<Accordion title="Video files (mp4)">
-  Same as audio import — the file is sent to your STT provider and the audio track is transcribed. Only the audio is processed; the video frames are not used.
+<Accordion title="Audio and video files (mp3, m4a, wav, webm, ogg, mp4)">
+  Clerisy sends the file to your configured STT provider and creates a new meeting from the result. Requires a speech-to-text provider to be configured. File-size limits apply: OpenAI and Groq accept up to 25 MB; Deepgram accepts up to 2 GB. For mp4 files, only the audio track is processed; the video frames are not used.
 </Accordion>
 
 Use **Import transcript** or **Import audio/video** from the project's Meetings list to add a file.
@@ -155,13 +151,19 @@ While the final transcription runs, the meeting page shows a progress indicator 
     The audio file is being decoded from WebM format.
   </Step>
   <Step title="Transcribing">
-    Local: segments processed / total shown as a progress bar. Cloud: displays "Sending to [provider]…".
+    Local only — segments are processed and a progress bar shows done / total. Updates as speech segments are found.
   </Step>
   <Step title="Speakers">
-    Local only — the voice-matching model is assigning speaker labels.
+    Local only — the voice-matching model is assigning speaker labels to the transcript lines.
   </Step>
-  <Step title="Done / Failed">
-    Transcription finished successfully, or an error occurred (shown with the reason).
+  <Step title="Sending">
+    Cloud providers only — the audio file is being uploaded and processed by the remote STT service. No progress bar is shown while waiting for the response.
+  </Step>
+  <Step title="Done">
+    Transcription finished successfully for this stream.
+  </Step>
+  <Step title="Failed">
+    An error occurred (shown with the reason). The meeting keeps its live-preview segments and the recording file is retained so you can retry.
   </Step>
 </Steps>
 

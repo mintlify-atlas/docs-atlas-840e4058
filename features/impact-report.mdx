@@ -26,35 +26,35 @@ Each category heading shows how many proposals it contains. Categories with no p
 
 Every proposal card contains several elements that tell you what was said and how confident the model is.
 
-<CardGroup cols={2}>
-  <Card title="Category badge" icon="tag">
+<AccordionGroup>
+  <Accordion title="Category badge">
     The proposal category — for example, "Decision / commitment" or "Action item".
-  </Card>
-  <Card title="Operation badge" icon="pencil">
+  </Accordion>
+  <Accordion title="Operation badge">
     What the proposal does to the project state: **New**, **Change**, **Close**, **Replaces**, or **Conflict**.
-  </Card>
-  <Card title="Item type badge" icon="shapes">
+  </Accordion>
+  <Accordion title="Item type badge">
     The type of project item involved: requirement, decision, task, risk, deadline, or question.
-  </Card>
-  <Card title="Title" icon="heading">
+  </Accordion>
+  <Accordion title="Title">
     A short description of the proposed change — what the model understood to be the key point.
-  </Card>
-  <Card title="Field diffs" icon="code-compare">
+  </Accordion>
+  <Accordion title="Field diffs">
     For updates, the before and after values of each changed field (title, body, owner, due date, status).
-  </Card>
-  <Card title="Evidence quote" icon="quote-left">
+  </Accordion>
+  <Accordion title="Evidence quote">
     The verbatim transcript segment backing the proposal, with the speaker's name and a timestamp.
-  </Card>
-  <Card title="Confidence %" icon="chart-bar">
+  </Accordion>
+  <Accordion title="Confidence %">
     How confident the model is in this proposal, from 0 to 100.
-  </Card>
-  <Card title="Impact level" icon="triangle-exclamation">
+  </Accordion>
+  <Accordion title="Impact level">
     **High**, **medium**, or **low** — the model's assessment of how significantly the change affects the project.
-  </Card>
-  <Card title="Firm vs tentative" icon="scale-balanced">
+  </Accordion>
+  <Accordion title="Firm vs tentative">
     **Firm** proposals were stated as facts or commitments. **Tentative** proposals were hedged, conditional, or still under discussion.
-  </Card>
-</CardGroup>
+  </Accordion>
+</AccordionGroup>
 
 The `Proposal` type from the source captures all of these fields:
 
@@ -132,17 +132,20 @@ Re-analysis runs the same pipeline as the automatic post-meeting pass: it reads 
 
 ## Pipeline stepper
 
-Every meeting page shows a five-step progress indicator that tells you exactly where the meeting is in the post-recording pipeline:
+Every meeting page shows a progress indicator that tells you exactly where the meeting is in the post-recording pipeline. The six `MeetingStatus` values map to these stages:
 
 <Steps>
-  <Step title="Captured">
-    The recording has finished and audio files are saved to disk.
+  <Step title="Recording">
+    Audio is being captured. Both streams are written to disk in real time. Meeting status: `recording`.
   </Step>
-  <Step title="Transcribed">
-    Both audio streams have been transcribed and the transcript is ready to read. Meeting status: `ready`.
+  <Step title="Transcribing">
+    The full audio files are being processed by the speech-to-text provider. Meeting status: `transcribing`.
+  </Step>
+  <Step title="Ready">
+    Both audio streams have been transcribed and the transcript is ready to read. Automatic AI analysis starts immediately after this step. Meeting status: `ready`.
   </Step>
   <Step title="Analyzed">
-    The AI has run the impact analysis and the Impact Report is ready for review. Meeting status: `analyzed`.
+    The AI has run the impact analysis and the Impact Report is ready for review. Meeting status: `analyzing` while running, then `analyzed`.
   </Step>
   <Step title="Reviewed">
     You have accepted, edited, or rejected individual proposals. Accepted proposals are ready to apply.

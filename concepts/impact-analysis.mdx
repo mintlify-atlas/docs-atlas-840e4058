@@ -164,6 +164,10 @@ const MIN_SPAN_COVERED = 0.75 // share of the matched transcript span that the q
   One sentence explaining why this change matters for the project. For conflict proposals, it states exactly what is contradicted and when it was decided.
 </ParamField>
 
+<ParamField path="status" type="ProposalStatus" required>
+  Lifecycle state: `pending` (not yet reviewed), `accepted` (approved for the next Apply batch), `rejected` (dismissed), or `applied` (written to the project state). Applied proposals are immutable.
+</ParamField>
+
 <ParamField path="evidence" type="Evidence[]" required>
   One to three evidence objects (see above). At least one must have passed validation for the proposal to appear in the report.
 </ParamField>

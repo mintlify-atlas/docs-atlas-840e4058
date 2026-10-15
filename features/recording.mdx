@@ -1,7 +1,7 @@
 ---
-title: "Meeting Recording: Capture Audio Without a Bot"
+title: "Meeting Recording: Capture Live Audio Without a Bot"
 sidebarTitle: "Recording"
-description: "Record meetings directly from your mic and system audio — no bot invite needed. Works with Zoom, Teams, Google Meet, Slack, Discord, and any other app."
+description: "Record meetings from your mic and system audio simultaneously — no bot invite needed. Works with Zoom, Teams, Google Meet, Slack, Discord, and more."
 ---
 
 Clerisy captures meetings by recording two separate audio streams on your Windows machine: your microphone and your system audio (everything else playing through your speakers). Because the recording happens locally, there is no bot to invite, no waiting room to pass, and nothing visible to other participants. The recording works with any meeting platform — Zoom, Teams, Google Meet in any browser, Slack, Discord, and others — as long as the audio passes through your computer.
@@ -51,23 +51,23 @@ export function isEcho(mic: Timed, system: Timed[]): boolean {
 
 While a recording is active, Clerisy shows a small always-on-top window that sits in the corner of your screen so you can see it over your meeting app. You can drag it anywhere; it remembers its position between sessions.
 
-<CardGroup cols={2}>
-  <Card title="Timer" icon="clock">
+<AccordionGroup>
+  <Accordion title="Timer">
     Shows how long the current recording has been running.
-  </Card>
-  <Card title="Live transcript line" icon="subtitles">
+  </Accordion>
+  <Accordion title="Live transcript line">
     Displays the most recent line from the live transcript so you can confirm speech is being captured.
-  </Card>
-  <Card title="Mark moment (Ctrl+Shift+D)" icon="star">
+  </Accordion>
+  <Accordion title="Mark moment (Ctrl+Shift+D)">
     Stars the current timestamp. The AI weights marked moments more heavily during analysis.
-  </Card>
-  <Card title="Stop button" icon="stop">
+  </Accordion>
+  <Accordion title="Stop button">
     Ends the recording and triggers the post-meeting pipeline automatically.
-  </Card>
-  <Card title="Open Clerisy" icon="arrow-up-right-from-square">
+  </Accordion>
+  <Accordion title="Open Clerisy">
     Brings the main Clerisy window to the front without stopping the recording.
-  </Card>
-</CardGroup>
+  </Accordion>
+</AccordionGroup>
 
 You can disable the floating widget entirely in **Settings → Recording**. When it is off, the recording pill in the Clerisy top bar still shows the timer and lets you stop.
 

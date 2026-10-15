@@ -8,6 +8,8 @@ Once a meeting has an Impact Report, you can share it with stakeholders who were
 
 ## Share formats
 
+The `ShareFormat` type supports three formats for copying to the clipboard (`'markdown' | 'slack' | 'whatsapp'`), and two formats for saving to a file (`'markdown' | 'pdf'`).
+
 <Tabs>
   <Tab title="Slack message">
     Formats the report as plain text optimized for Slack's message input. Bold and italic text use Slack's `*bold*` and `_italic_` conventions. The output is ready to paste directly into a Slack channel or DM.
@@ -77,7 +79,7 @@ The Share dialog exposes three options that apply to all formats:
 </ParamField>
 
 <ParamField body="transcript" type="boolean" default="false">
-  Whether to append the full meeting transcript at the end of the document. Available for Markdown and PDF only — chat message formats are too short for a full transcript.
+  Whether to append the full meeting transcript at the end of the document. Available for Markdown and PDF only — chat message formats (Slack, WhatsApp) are too long for a full transcript.
 </ParamField>
 
 ## Sharing from the meeting page

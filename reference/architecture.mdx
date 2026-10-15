@@ -1,5 +1,5 @@
 ---
-title: "Architecture Overview: How Clerisy Is Built"
+title: "Clerisy Architecture: Process Model, Modules, and Tech Stack"
 sidebarTitle: "Architecture"
 description: "Clerisy's Electron process model, key source modules, the post-meeting pipeline, SQLite data model, and the full technology stack."
 ---
@@ -9,16 +9,16 @@ Clerisy is an Electron desktop application that follows the standard Electron mu
 ## Process model
 
 <CardGroup cols={2}>
-  <Card title="Main process" icon="server">
+  <Card title="Main process" icon="server" href="https://github.com/iamgauravjoshi/Clerisy/tree/main/src/main">
     Lives in `src/main/`. Runs as a privileged Node.js process. Owns the SQLite database, audio recording files, IPC handlers, the system tray, global hotkeys, the floating widget, and every AI and speech-to-text call. Keys are stored encrypted with Windows DPAPI and never leave this process.
   </Card>
-  <Card title="Renderer process" icon="monitor">
+  <Card title="Renderer process" icon="monitor" href="https://github.com/iamgauravjoshi/Clerisy/tree/main/src/renderer">
     Lives in `src/renderer/`. A React + Tailwind UI running inside a sandboxed Chromium window. Has no direct access to Node APIs. All data fetching and mutations go through the IPC bridge exposed by the preload.
   </Card>
-  <Card title="Preload" icon="plug">
+  <Card title="Preload" icon="plug" href="https://github.com/iamgauravjoshi/Clerisy/tree/main/src/preload">
     Lives in `src/preload/`. Runs in a privileged context at window creation time. Uses Electron's `contextBridge` to expose a typed `api` object to the renderer. The allow-list is derived from the shared `MAIN_EVENTS` constant, so the preload and main process can never drift out of sync.
   </Card>
-  <Card title="Shared" icon="layers">
+  <Card title="Shared" icon="layers" href="https://github.com/iamgauravjoshi/Clerisy/tree/main/src/shared">
     Lives in `src/shared/`. TypeScript types, constants, and utilities imported by all three processes. Includes every domain type (`Item`, `Proposal`, `Meeting`, `Evidence`, `Settings`, etc.) and the `MainEvents` event map.
   </Card>
 </CardGroup>
@@ -36,7 +36,7 @@ Clerisy is an Electron desktop application that follows the standard Electron mu
 | `src/main/db.ts` | SQLite schema and queries (`node:sqlite`, so no native modules) |
 | `src/main/transcriptParser.ts` | VTT / SRT / Zoom / plain transcript import |
 | `src/renderer/src/features/recording/recorder.ts` | MediaRecorder capture: continuous recordings plus rolling live chunks |
-| `src/renderer/src/*View.tsx` | React UI views |
+| `src/renderer/src/pages/*Page.tsx` | React UI pages (Meeting, Project, Settings, Welcome, Widget) |
 
 ## Post-meeting pipeline
 
@@ -99,22 +99,22 @@ Clerisy stores everything in a single SQLite database (`clerisy.db`) in `%APPDAT
 ## Tech stack
 
 <CardGroup cols={2}>
-  <Card title="Electron 44" icon="box">
+  <Card title="Electron 44" icon="box" href="https://www.electronjs.org/docs/latest">
     Desktop shell. Provides the main/renderer process split, global shortcuts, tray, notifications, system-audio loopback capture, and auto-update via `electron-updater`.
   </Card>
-  <Card title="React 19 + TypeScript 7" icon="code">
+  <Card title="React 19 + TypeScript 7" icon="code" href="https://react.dev">
     Renderer UI. Strict TypeScript throughout; types are shared between main and renderer via `src/shared/types.ts`.
   </Card>
-  <Card title="Tailwind CSS 4" icon="paintbrush">
+  <Card title="Tailwind CSS 4" icon="paintbrush" href="https://tailwindcss.com/docs">
     Utility-first styling in the renderer. Design tokens defined as CSS custom properties, exposed to Tailwind via `@theme`.
   </Card>
-  <Card title="Vercel AI SDK 7" icon="sparkles">
+  <Card title="Vercel AI SDK 7" icon="sparkles" href="https://sdk.vercel.ai/docs">
     Provider-agnostic LLM client used in the main process. Supports Anthropic, OpenAI, Google, OpenRouter, Ollama, and any OpenAI-compatible server via a single `getModel()` factory.
   </Card>
-  <Card title="sherpa-onnx-node 1.13.8" icon="mic">
+  <Card title="sherpa-onnx-node 1.13.8" icon="mic" href="https://github.com/k2-fsa/sherpa-onnx">
     Local, offline speech-to-text. Runs entirely on device after a one-time 665 MB model download. No API key required.
   </Card>
-  <Card title="Zod 4 + node:sqlite" icon="database">
+  <Card title="Zod 4 + node:sqlite" icon="database" href="https://zod.dev">
     Zod validates IPC arguments and the LLM's structured output. `node:sqlite` (built into Node 22) provides the SQLite driver with no native binary modules.
   </Card>
 </CardGroup>

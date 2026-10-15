@@ -1,7 +1,7 @@
 ---
 title: "Clerisy: AI Meeting Intelligence for Project Teams"
 sidebarTitle: "Introduction"
-description: "Clerisy keeps a living, versioned project state and uses AI to show exactly what changed — and why — after every meeting."
+description: "Clerisy records meetings without a bot, transcribes them, and uses AI to propose evidence-backed changes to your versioned project state."
 ---
 
 Clerisy answers one question after every meeting: **what changed in the project because of this conversation?** It keeps a living, versioned record of your project's requirements, decisions, tasks, risks, deadlines, and open questions. After each meeting, an AI model compares the transcript against that record and proposes changes — each one backed by a verbatim quote from the transcript. You approve or reject each proposal, and the project state moves forward with a full audit trail showing who changed what, in which meeting, and exactly what was said.
@@ -35,22 +35,22 @@ Clerisy answers one question after every meeting: **what changed in the project 
 ## What you get
 
 <CardGroup cols={2}>
-  <Card title="Project State Board" icon="table-columns">
+  <Card title="Project State Board" icon="table-columns" href="/concepts/project-state">
     Typed items — requirements, decisions, tasks, risks, deadlines, open questions — each with an owner, due date, version, and a per-item history linking every change to the meeting and quote that drove it.
   </Card>
-  <Card title="Meeting Impact Report" icon="file-chart-line">
+  <Card title="Meeting Impact Report" icon="file-chart-line" href="/features/impact-report">
     A structured summary of what the meeting changed: each proposal shows its category, speaker, impact level, firm or tentative status, and verbatim evidence. Clicking a quote jumps straight to that transcript line.
   </Card>
-  <Card title="Ask the Project" icon="circle-question">
+  <Card title="Ask the Project" icon="circle-question" href="/features/ask-the-project">
     Ask natural-language questions like "Why did the launch date move?" or "What's still open and who owns it?" Every point in the answer cites the project items and transcript quotes behind it. Unsupported points are left out.
   </Card>
-  <Card title="Hallucination Guard" icon="shield-check">
+  <Card title="Hallucination Guard" icon="shield-check" href="/concepts/impact-analysis">
     Every proposed change must quote the transcript. Citations are verified in code before the report appears; any proposal that cannot be traced back to real words is discarded before you ever see it.
   </Card>
-  <Card title="Botless Capture" icon="microphone">
+  <Card title="Botless Capture" icon="microphone" href="/features/recording">
     Records mic and system audio as separate streams — no meeting bot, no browser extension, no account connection. Works with any conferencing tool running on your Windows machine.
   </Card>
-  <Card title="Bring Your Own Model" icon="brain-circuit">
+  <Card title="Bring Your Own Model" icon="brain-circuit" href="/configuration/ai-models">
     Connect Claude, OpenAI, Gemini, OpenRouter, Ollama (local), or any OpenAI-compatible endpoint. API keys are encrypted with Windows DPAPI and never leave the main process.
   </Card>
 </CardGroup>
