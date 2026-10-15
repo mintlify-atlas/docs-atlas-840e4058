@@ -1,0 +1,67 @@
+---
+title: "Keyboard Shortcuts Reference"
+sidebarTitle: "Shortcuts"
+description: "Every keyboard shortcut in Clerisy — global hotkeys that work system-wide and in-app shortcuts for navigating and reviewing proposals."
+---
+
+Clerisy is designed to stay out of your way during meetings and let you move quickly through the Impact Report afterwards. Two global hotkeys work anywhere on your desktop — Clerisy doesn't need to be visible — and a set of in-app shortcuts lets you navigate, approve, and edit proposals without reaching for the mouse.
+
+## Global hotkeys
+
+Global hotkeys fire even when the Clerisy window is hidden or minimised to the tray. They require Clerisy to be running; the window does not need to be open.
+
+<Note>
+  Global hotkeys work as long as Clerisy is running — even if its window is closed and it is sitting quietly in the system tray.
+</Note>
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl+Shift+M` | Start or stop recording |
+| `Ctrl+Shift+D` | Mark an important moment during an active recording |
+
+Marked moments are weighted more heavily by the AI analysis, so use `Ctrl+Shift+D` whenever the conversation turns to a significant decision or commitment.
+
+## In-app shortcuts
+
+These shortcuts work when the Clerisy window is focused, a text input is not active, and no dialog is open.
+
+### Impact Report navigation
+
+| Shortcut | Action |
+|---|---|
+| `J` | Move to the next proposal |
+| `K` | Move to the previous proposal |
+| `A` | Accept the focused proposal |
+| `R` | Reject the focused proposal |
+| `E` | Edit the focused proposal |
+| `T` | Jump to the evidence quote of the focused proposal in the transcript |
+
+### Project board
+
+| Shortcut | Action |
+|---|---|
+| `N` | Add a new item on the project board |
+
+### General
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl+,` | Open Settings |
+| `?` | Open the keyboard shortcuts reference dialog |
+
+## Customizing hotkeys
+
+The two global hotkeys — record and mark — can be changed in **Settings → Recording and hotkeys**. They use [Electron accelerator syntax](https://www.electronjs.org/docs/latest/api/accelerator). Some examples:
+
+```text
+CommandOrControl+Shift+M
+Alt+R
+F9
+CommandOrControl+Alt+D
+```
+
+<Tip>
+  If a hotkey you choose is already claimed by another application, Clerisy will fall back silently. Pick an unusual combination — such as `Ctrl+Shift+F9` — if your default hotkeys clash with a meeting app.
+</Tip>
+
+In-app shortcuts are not currently configurable.

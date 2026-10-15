@@ -1,0 +1,106 @@
+---
+title: "Share the Impact Report: Export and Send Meeting Changes"
+sidebarTitle: "Sharing"
+description: "Copy the Impact Report as a Slack or WhatsApp message, paste it as Markdown, or save it as a formatted PDF — with full control over what to include."
+---
+
+Once a meeting has an Impact Report, you can share it with stakeholders who were not present or need a written record of what was decided. Clerisy generates the share text directly from the database — not from whatever is on screen — so the output is always consistent and never depends on renderer state. You control whether to include only approved changes or every non-rejected proposal, whether to attach the evidence quotes, and whether to append the full transcript.
+
+## Share formats
+
+<Tabs>
+  <Tab title="Slack message">
+    Formats the report as plain text optimized for Slack's message input. Bold and italic text use Slack's `*bold*` and `_italic_` conventions. The output is ready to paste directly into a Slack channel or DM.
+
+    Copying to the clipboard is handled by the main process rather than the browser, so the sandboxed renderer page does not need clipboard permission.
+
+    ```text
+    *Meeting Impact Report: Q3 Roadmap Sync*
+    _Acme Corp · Q3 Roadmap Sync · 3 Jul 2025_
+
+    *What changed*
+    The team confirmed the September launch date and moved two open questions to action items...
+    ```
+  </Tab>
+  <Tab title="WhatsApp message">
+    Formats the report as plain text with WhatsApp's `*bold*` and `_italic_` markers and bullet points using `•`. Designed for direct paste into WhatsApp Web or the mobile app.
+
+    ```text
+    *Meeting Impact Report: Q3 Roadmap Sync*
+    _Acme Corp · Q3 Roadmap Sync · 3 Jul 2025_
+
+    *What changed*
+    The team confirmed the September launch date...
+
+    *Decision / commitment*
+    • *[New] Launch on 15 September*
+    ```
+  </Tab>
+  <Tab title="Markdown">
+    Produces a `.md` file using standard Markdown headings, bold, italics, and blockquotes for evidence. Suitable for pasting into Notion, Linear, Confluence, GitHub issues, or any tool that renders Markdown.
+
+    ```markdown
+    # Meeting Impact Report: Q3 Roadmap Sync
+
+    _Acme Corp · Q3 Roadmap Sync · 3 Jul 2025_
+
+    ## What changed
+    The team confirmed the September launch date...
+
+    ## Decision / commitment
+    - **[New] Launch on 15 September**
+      Said by Priya
+      > "We're committing to September 15th — that's final." — Priya, 14:32
+    ```
+
+    You can copy the Markdown to the clipboard or save it as a `.md` file. The file is named automatically: `Project - Meeting - Impact report.md`.
+  </Tab>
+  <Tab title="PDF">
+    Renders the report as a formatted, print-ready PDF. Clerisy generates the PDF by rendering an HTML page in a hidden Electron window with JavaScript disabled and no external resources loaded, then printing it to PDF at A4 size. The result is a self-contained file safe to email or archive.
+
+    The PDF uses the same content order as the on-screen report, with page breaks before the transcript section if included.
+
+    The file is named automatically: `Project - Meeting - Impact report.pdf`.
+  </Tab>
+</Tabs>
+
+## Share options
+
+The Share dialog exposes three options that apply to all formats:
+
+<ParamField body="scope" type="'approved' | 'all'" default="approved">
+  **approved** — include only proposals you have accepted or that have already been applied to the project state. **all** — include every proposal that was not explicitly rejected (pending and accepted proposals both appear).
+</ParamField>
+
+<ParamField body="evidence" type="boolean" default="true">
+  Whether to include the verbatim transcript quotes that back each change. Turning this off produces a shorter summary without the quoted evidence.
+</ParamField>
+
+<ParamField body="transcript" type="boolean" default="false">
+  Whether to append the full meeting transcript at the end of the document. Available for Markdown and PDF only — chat message formats are too short for a full transcript.
+</ParamField>
+
+## Sharing from the meeting page
+
+<Steps>
+  <Step title="Open the meeting page">
+    Navigate to the meeting whose report you want to share. The Share button appears in the meeting page header once the meeting has an Impact Report.
+  </Step>
+  <Step title="Click Share">
+    Opens the Share dialog, which shows a live preview of the output on the right as you change format and options on the left.
+  </Step>
+  <Step title="Choose a format and set options">
+    Select Slack, WhatsApp, Markdown, or PDF. Toggle the scope, evidence, and transcript options to match what you want to send.
+  </Step>
+  <Step title="Copy or save">
+    For Slack, WhatsApp, and Markdown: click **Copy to clipboard** to copy the formatted text. For Markdown and PDF: click **Save as file** to choose a save location. Clerisy suggests a filename based on the project and meeting names.
+  </Step>
+</Steps>
+
+<Tip>
+  After saving a Markdown or PDF file, click **Reveal last export** in the Share dialog to open the containing folder in Windows Explorer and find the file immediately. Clerisy remembers the path of the most recently saved file for the lifetime of the session.
+</Tip>
+
+<Note>
+  The Share button is only available once a meeting has an Impact Report — that is, once the meeting status is `analyzed` or `applied`. For meetings that are still recording, transcribing, or in the `ready` state awaiting analysis, the Share button does not appear.
+</Note>

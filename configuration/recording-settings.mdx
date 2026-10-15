@@ -1,0 +1,99 @@
+---
+title: "Recording and Detection Settings"
+sidebarTitle: "Recording Settings"
+description: "Configure Clerisy's recording behaviour: microphone label, live-chunk length, auto-detection, floating widget, global hotkeys, and startup options."
+---
+
+Clerisy's recording settings control everything that happens before and during a meeting capture — how your microphone stream is labelled, how long live-preview chunks are, whether the app watches for meeting apps starting, and which global hotkeys start and stop a recording. All of these are found in **Settings → Recording and hotkeys**. Changes take effect immediately; you do not need to restart the app.
+
+## Settings reference
+
+<ParamField body="selfName" type="string" default='"Me"'>
+  The label applied to your microphone stream in the transcript and Impact Report. Every segment captured from your mic appears under this name. Set it to your real name so that speaker labels read naturally and so that the AI can correctly attribute your statements in the analysis.
+</ParamField>
+
+<ParamField body="chunkSeconds" type="number" default="30">
+  Length in seconds of the rolling live-preview chunks produced during recording. Every `chunkSeconds` seconds, Clerisy sends the latest audio slice to the STT provider so you can watch the transcript grow while the meeting is in progress. Smaller values give more frequent updates but increase API call frequency.
+</ParamField>
+
+<ParamField body="autoDetect" type="boolean" default="true">
+  Watch the Windows microphone-usage privacy registry and offer to start recording when a meeting application claims the microphone. When the meeting app releases the mic, recording stops automatically. Disable this if you prefer to start every recording manually.
+</ParamField>
+
+<ParamField body="floatingWidget" type="boolean" default="true">
+  Show the always-on-top floating widget while recording and when a meeting is detected. The widget displays the elapsed timer, the most recent transcript line, and buttons to mark a moment, stop, or open Clerisy. It also shows the "meeting detected" prompt when `autoDetect` fires. Drag it anywhere on screen — its position is remembered across sessions. Disable to keep your screen clean; all the same actions are available from the Clerisy main window and via hotkeys.
+</ParamField>
+
+<ParamField body="hotkeyRecord" type="string" default='"CommandOrControl+Shift+M"'>
+  Global hotkey to start or stop a recording. Works even when Clerisy is in the background or minimised to the tray. Uses [Electron accelerator syntax](#hotkey-customization). The default is `Ctrl+Shift+M` on Windows.
+</ParamField>
+
+<ParamField body="hotkeyMark" type="string" default='"CommandOrControl+Shift+D"'>
+  Global hotkey to mark an important moment during a recording. Marks are written to the database with a timestamp and used by the AI to weight that part of the transcript more heavily during analysis. Uses [Electron accelerator syntax](#hotkey-customization). The default is `Ctrl+Shift+D` on Windows.
+</ParamField>
+
+<ParamField body="launchAtLogin" type="boolean" default="true">
+  Start Clerisy quietly in the system tray when Windows signs in. This ensures meeting auto-detection is running before you open your first meeting of the day. Only supported in the installed app — has no effect when running from source.
+</ParamField>
+
+<ParamField body="autoUpdate" type="boolean" default="true">
+  Check for and download new versions silently in the background. Updates never install while a recording is in progress. When a download finishes, Clerisy shows a **Restart to update** prompt; if you don't click it, the update installs the next time the app quits. Only supported in the installed app.
+</ParamField>
+
+<ParamField body="theme" type="'system' | 'light' | 'dark'" default='"system"'>
+  Controls the app's colour scheme. `system` follows the Windows light/dark setting automatically. `light` or `dark` force the mode regardless of the OS preference. The change applies to the entire UI including native scrollbars and form controls.
+</ParamField>
+
+<ParamField body="audioRetention" type="'keep' | 'transcribed' | '7d' | '30d'" default='"keep"'>
+  When to automatically delete meeting recordings (the `.webm` audio files). Transcripts and Impact Reports are never deleted by this policy.
+
+  - `keep` — never delete recordings automatically.
+  - `transcribed` — delete a recording as soon as transcription succeeds (no errors, at least one segment produced).
+  - `7d` — delete recordings older than 7 days.
+  - `30d` — delete recordings older than 30 days.
+</ParamField>
+
+## Meeting auto-detection
+
+When `autoDetect` is enabled, Clerisy polls the Windows privacy registry key that tracks which processes are currently using the microphone:
+
+```text
+HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone\NonPackaged
+```
+
+When a new process claims the microphone and its executable name matches a known meeting application (Zoom, Teams, Google Meet in a browser, Slack, Discord, and others), Clerisy raises the **meeting detected** prompt — either as the floating widget (if `floatingWidget` is true) or as a native notification. You can:
+
+- **Start recording** to immediately begin capturing mic and system audio for that app.
+- **Dismiss** to ignore this detection without recording.
+
+When the process releases the microphone (i.e. you leave the meeting), Clerisy stops the active recording automatically and begins transcription.
+
+<Tip>
+  You can still start and stop recordings manually at any time via the hotkey or the main window, regardless of whether `autoDetect` is on.
+</Tip>
+
+## Hotkey customization
+
+Hotkeys follow [Electron's accelerator syntax](https://www.electronjs.org/docs/latest/api/accelerator). The modifier tokens and some examples:
+
+| Token | Key |
+|---|---|
+| `CommandOrControl` | `Ctrl` on Windows |
+| `Alt` | `Alt` |
+| `Shift` | `Shift` |
+| `F1`–`F24` | Function keys |
+
+```text
+'CommandOrControl+Shift+M'   → Ctrl+Shift+M   (default record hotkey)
+'CommandOrControl+Shift+D'   → Ctrl+Shift+D   (default mark hotkey)
+'Alt+R'                      → Alt+R
+'F9'                         → F9
+```
+
+<Warning>
+  Avoid hotkeys already claimed by Windows or your meeting app (e.g. `Alt+Tab`, `Win+*`). If two applications register the same global hotkey, whichever registered it first wins, and Clerisy's hotkey will silently do nothing.
+</Warning>
+
+<Tip>
+  Set `selfName` to your real name before your first meeting. Because Clerisy labels every microphone segment with `selfName`, the AI and the transcript viewer both display your name rather than the generic "Me" from the start — no renaming needed after the fact.
+</Tip>

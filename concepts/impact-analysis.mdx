@@ -1,0 +1,173 @@
+---
+title: "Impact Analysis: How AI Compares Meetings to Project State"
+sidebarTitle: "Impact Analysis"
+description: "After each meeting, Clerisy's AI compares the transcript to the project state and proposes changes, each backed by a verbatim quote from the transcript."
+---
+
+Impact analysis is the step between a raw transcript and a set of actionable project changes. Once a meeting is transcribed, Clerisy sends the complete transcript and the current project state to a large language model. The model's job is not to summarize what was discussed — it is to answer a specific question: *what changed in the project because of this meeting?* Every proposed change must be backed by verbatim evidence from the transcript, and that evidence is checked in code before you ever see a proposal.
+
+## The analysis pipeline
+
+<Steps>
+  <Step title="Full transcript assembled">
+    After the final transcription pass completes, all transcript segments are ordered by start time and formatted as numbered lines (`[S1 0:00] Speaker: text`). Moments you marked as important during the meeting are noted in the prompt so the model gives them extra weight.
+  </Step>
+  <Step title="Current project state loaded">
+    All non-superseded, non-cancelled items in the project are loaded and formatted with short reference IDs (`REQ-1`, `DEC-2`, `TSK-3`, etc.) that the model can use to refer to existing items. The project's stakeholders and a summary of changes from recent previous meetings are included for context.
+  </Step>
+  <Step title="LLM prompted with structured output schema">
+    The model receives a detailed system prompt and the assembled context, and is asked to return a structured JSON object matching a strict Zod schema. The schema enforces field types, allowed enum values, and the shape of evidence objects. Vercel AI SDK's `Output.object` mode is used for reliable structured output across providers.
+  </Step>
+  <Step title="Evidence validated against transcript segments">
+    Each proposed change includes one to three evidence objects, each citing a transcript line ID and a verbatim quote. For every evidence entry, Clerisy checks whether the quote actually appears in the cited segment (or an immediately adjacent one). The check uses word-level fuzzy matching with an 85% threshold and a span coverage requirement — it catches paraphrasing, dropped words, and inserted words.
+  </Step>
+  <Step title="Proposals without real evidence discarded">
+    Any proposal where no evidence entry passes validation is silently dropped before the report is saved. The `droppedCount` field on the report records how many were removed, so you can see how much the guard filtered.
+  </Step>
+  <Step title="Impact Report created">
+    Surviving proposals are sorted by impact level (high → medium → low) then by confidence, and saved as the meeting's Impact Report. The meeting status advances to `analyzed` and a system notification fires with the proposal count.
+  </Step>
+</Steps>
+
+## Proposal categories
+
+Each proposal is assigned a category that describes the kind of change it represents. The nine categories map to the areas of a project most commonly affected by meetings.
+
+| Category | Label | What it covers |
+|---|---|---|
+| `requirement` | New / changed requirement | A functional or non-functional requirement added or modified in the meeting. |
+| `decision` | Decision / commitment | A firm conclusion or commitment that was reached. |
+| `action_item` | Action item | A task assigned to someone, with or without a due date. |
+| `scope_change` | Scope change | Something explicitly added to or removed from project scope. |
+| `timeline_change` | Timeline change | A deadline or milestone moved, added, or dropped. |
+| `risk` | Risk | A new risk identified, or a change to an existing one. |
+| `blocker` | Blocker | Something actively preventing progress — treated as a high-urgency risk. |
+| `open_question` | Unresolved question | A question raised in the meeting that was not resolved. |
+| `conflict` | Conflict with project state | Something said that contradicts an existing item or a previous decision. |
+
+## Proposal operations
+
+Alongside its category, every proposal specifies an operation — what it should do to the project state if accepted.
+
+<Accordion title="create">
+  Creates a brand-new item on the project board. Used when the meeting introduces something that does not exist in the current state. `targetItemId` is `null` for create proposals.
+</Accordion>
+
+<Accordion title="update">
+  Modifies an existing item — changing its title, body, owner, due date, or type. The proposal carries the full new values; the diff is computed at apply time. If the target item cannot be found (e.g. it was deleted), the operation is promoted to `create`.
+</Accordion>
+
+<Accordion title="close">
+  Marks an existing task, question, or risk as `done`. Used when the meeting resolves something that was open — for example, a decision is made on an open question, or a task is confirmed complete.
+</Accordion>
+
+<Accordion title="supersede">
+  Replaces an existing item (typically a decision or requirement) with a new one. The old item's status is set to `superseded` and a new item is created. Both the old and new items get history entries linking them to each other.
+</Accordion>
+
+<Accordion title="flag">
+  Used only for `conflict` proposals. Creates an open question on the board asking the team to resolve the contradiction. If the flagged item still exists, it also receives a history entry noting the conflict. This operation never changes or closes the conflicting item itself.
+</Accordion>
+
+## Evidence
+
+Every proposal carries an `evidence` array — one to three objects, each anchoring the proposal to a specific moment in the transcript.
+
+<ResponseField name="segmentId" type="string">
+  The database ID of the transcript segment this evidence comes from.
+</ResponseField>
+
+<ResponseField name="quote" type="string">
+  A verbatim excerpt taken from the segment's text. This is the transcript's own wording — after validation, Clerisy stores the matched span from the original segment text, not the model's version, so the quote is always exact.
+</ResponseField>
+
+<ResponseField name="speaker" type="string">
+  The speaker label of the segment, as it appears in the transcript.
+</ResponseField>
+
+<ResponseField name="t" type="number">
+  Start time of the segment in seconds from the beginning of the meeting. Clicking the quote in the Impact Report scrolls the transcript to this position.
+</ResponseField>
+
+## Hallucination guard
+
+The most common failure mode of LLMs in summarization tasks is fabricating details that weren't said. Clerisy addresses this structurally: every proposal must cite transcript lines, and those citations are checked in code.
+
+The validation logic in `analysis.ts` works as follows:
+
+- The model's quote and the text of the cited segment are both tokenized at the word level, with Unicode combining marks handled correctly (so accented characters and Devanagari vowel signs aren't split off).
+- At least 85% of the quote's words must appear in order in the segment, covering at least 75% of the matched span.
+- Negations (`not`, `never`, `can't`, `नहीं`, and others in Hindi and Hinglish) are treated specially: if the quote adds or drops a negation, the match fails. This prevents a quote like `"we will ship on time"` from passing when the transcript said `"we will not ship on time"`.
+- If none of the proposal's evidence entries pass, the proposal is dropped entirely. The `droppedCount` on the report tells you how many proposals were removed this way.
+
+```typescript
+const MIN_QUOTE_WORDS = 3
+const MIN_QUOTE_FOUND = 0.85 // share of the quote's words that must appear in the line, in order
+const MIN_SPAN_COVERED = 0.75 // share of the matched transcript span that the quote must cover
+```
+
+## Proposal fields
+
+<ParamField path="id" type="string" required>
+  Unique identifier for this proposal.
+</ParamField>
+
+<ParamField path="category" type="ProposalCategory" required>
+  One of the nine categories above — what kind of change this is.
+</ParamField>
+
+<ParamField path="op" type="ProposalOp" required>
+  The operation to perform: `create`, `update`, `close`, `supersede`, or `flag`.
+</ParamField>
+
+<ParamField path="targetItemId" type="string | null">
+  The ID of the existing project item this proposal acts on. `null` for `create` proposals.
+</ParamField>
+
+<ParamField path="itemType" type="ItemType" required>
+  The type of the item this proposal creates or modifies: `requirement`, `decision`, `task`, `risk`, `deadline`, or `question`.
+</ParamField>
+
+<ParamField path="title" type="string" required>
+  The proposed item title — short and scannable.
+</ParamField>
+
+<ParamField path="body" type="string">
+  Longer detail for the proposed item.
+</ParamField>
+
+<ParamField path="owner" type="string">
+  The person the AI identified as responsible, taken from the transcript. Empty string if none was mentioned.
+</ParamField>
+
+<ParamField path="dueDate" type="string">
+  A `YYYY-MM-DD` date if one was stated or clearly implied. Empty string otherwise.
+</ParamField>
+
+<ParamField path="speaker" type="string" required>
+  The name of the speaker whose words drove this proposal, as written in the transcript.
+</ParamField>
+
+<ParamField path="strength" type='"firm" | "tentative"' required>
+  `firm` for decisions, commitments, and definite statements. `tentative` for hedged ideas — anything qualified with "maybe", "we could", "let's think about", and similar phrases.
+</ParamField>
+
+<ParamField path="confidence" type="number" required>
+  A 0–1 score from the model reflecting how certain it is that this proposal is warranted, clamped to the `[0, 1]` range after validation.
+</ParamField>
+
+<ParamField path="impact" type='"high" | "medium" | "low"' required>
+  `high` if the change affects scope, timeline, budget, or a key decision. `medium` for normal work items. `low` for minor notes.
+</ParamField>
+
+<ParamField path="rationale" type="string" required>
+  One sentence explaining why this change matters for the project. For conflict proposals, it states exactly what is contradicted and when it was decided.
+</ParamField>
+
+<ParamField path="evidence" type="Evidence[]" required>
+  One to three evidence objects (see above). At least one must have passed validation for the proposal to appear in the report.
+</ParamField>
+
+<Info>
+  If you rename or merge speakers after a meeting is analyzed, you can re-analyze from the meeting page and get a fresh report with the corrected speaker names. Re-analysis is blocked only once the meeting's changes have been applied to the project state, because that would replace the report the state came from.
+</Info>

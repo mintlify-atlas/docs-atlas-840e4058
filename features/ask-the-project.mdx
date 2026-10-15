@@ -1,0 +1,121 @@
+---
+title: "Ask the Project: Grounded Q&A from Your Project's Record"
+sidebarTitle: "Ask the Project"
+description: "Ask plain-language questions and get answers sourced only from your project's items and transcripts — every point is backed by a verified quote or item."
+---
+
+Ask the Project lets you query your project's living record in plain language. Rather than searching through meeting notes or scrolling the project board, you type a question and receive a structured answer drawn exclusively from what is already in Clerisy: the project's items, their change history, and the verbatim words from every meeting transcript. Every point in the answer is backed by at least one project item or a verified transcript quote — if a point cannot be sourced, it is dropped before you see it.
+
+## How it works
+
+<Steps>
+  <Step title="Open the Ask panel">
+    Open a project and click **Ask** in the sidebar or the project header area to open the Ask panel.
+  </Step>
+  <Step title="Type your question">
+    Enter a question of up to 500 characters. Good starting points include "Why did the launch date move?", "What's still open, and who owns it?", or "What risks were raised in the last meeting?"
+  </Step>
+  <Step title="The AI searches the project record">
+    Clerisy ranks transcript lines by relevance to your question using TF-IDF scoring, selects the best-matching segments from across all meetings, and builds a prompt containing the current project state, change history, and the most relevant transcript excerpts.
+  </Step>
+  <Step title="Each point is sourced and validated">
+    The model returns a structured answer. Clerisy then checks every item reference and every transcript quote against the real data — items must exist in the project, and quotes must match the actual text of a transcript segment. Points that cannot be verified are silently dropped.
+  </Step>
+  <Step title="Click any source to open it">
+    Click a project item to open that item on the project board. Click a transcript quote to open the meeting at the exact line and highlight it for two seconds.
+  </Step>
+</Steps>
+
+## Grounding rules
+
+Ask the Project answers only from the project's own record. The AI is instructed to never use outside knowledge and never guess. If the project's items and transcripts do not contain enough information to answer the question, the answer will say so — the `answered` field on the stored `ProjectQuestion` will be `false` — rather than fabricating a plausible-sounding but unsourced response.
+
+Points that the model generates without a traceable source are discarded and counted in `droppedCount` on the `ProjectQuestion` record. A non-zero dropped count means the model attempted to say something it could not back up.
+
+```ts
+// types.ts
+export interface ProjectQuestion {
+  id: string
+  projectId: string
+  question: string
+  /** false when the project's state and meetings don't answer it */
+  answered: boolean
+  points: AnswerPoint[]
+  /** points the model gave without a source that checked out */
+  droppedCount: number
+  model: string
+  createdAt: string
+}
+```
+
+## Evidence types
+
+Each point in an answer is an `AnswerPoint` — a short statement supported by a combination of project items and verbatim transcript quotes.
+
+<ResponseField name="text" type="string">
+  The text of the answer point — one fact or conclusion in plain language.
+</ResponseField>
+
+<ResponseField name="items" type="array">
+  Project items the point rests on. Each entry carries the item's `id`, `type`, and `title` as they were at the time the question was answered. The item may have changed or been deleted since.
+</ResponseField>
+
+<ResponseField name="quotes" type="array">
+  Verbatim transcript quotes that back the point. Each quote is an `AnswerQuote`:
+
+  <ResponseField name="segmentId" type="string">
+    The ID of the transcript segment the quote comes from.
+  </ResponseField>
+
+  <ResponseField name="meetingId" type="string">
+    The ID of the meeting this segment belongs to.
+  </ResponseField>
+
+  <ResponseField name="meetingTitle" type="string">
+    The title of the meeting, shown alongside the quote in the answer panel.
+  </ResponseField>
+
+  <ResponseField name="quote" type="string">
+    The verbatim text — a substring of the transcript segment, copied exactly as spoken.
+  </ResponseField>
+
+  <ResponseField name="speaker" type="string">
+    The speaker label from the transcript segment.
+  </ResponseField>
+
+  <ResponseField name="t" type="number">
+    Timestamp in seconds from the start of the meeting — used to open the meeting at the right line when you click.
+  </ResponseField>
+</ResponseField>
+
+```ts
+// types.ts
+export interface AnswerPoint {
+  text: string
+  items: { id: string; type: ItemType; title: string }[]
+  quotes: AnswerQuote[]
+}
+
+export interface AnswerQuote {
+  segmentId: string
+  meetingId: string
+  meetingTitle: string
+  quote: string
+  speaker: string
+  t: number
+}
+```
+
+## Question history
+
+Every question you ask and its answer are stored in the database, linked to the project. The Ask panel shows previous questions in reverse chronological order so you can revisit past answers without re-running the AI. Each stored question records which model generated the answer.
+
+To remove a question and its answer, click the delete icon next to it in the history list. Deleting a question is permanent.
+
+<Info>
+  The maximum question length is **500 characters** (`MAX_QUESTION_LENGTH` in `types.ts`). Questions shorter than 3 characters are rejected. Keep questions specific — the more focused the question, the more useful the ranked transcript excerpts the AI receives.
+</Info>
+
+<Tip>
+  Use Ask to get a quick project status summary. Questions like "What are all the open risks?" or "Which action items don't have an owner yet?" give you a sourced snapshot in seconds, without opening the project board or reviewing past meeting reports.
+</Tip>

@@ -1,0 +1,122 @@
+---
+title: "Data Storage: Where Clerisy Keeps Your Data"
+sidebarTitle: "Data Storage"
+description: "All Clerisy data lives in %APPDATA%\\Clerisy. Learn about the database, settings, encrypted secrets, audio files, and recording retention policies."
+---
+
+Every piece of data Clerisy creates — your projects, meeting transcripts, Impact Reports, settings, and recordings — is stored locally on your Windows machine under `%APPDATA%\Clerisy`. Nothing is sent to Clerisy's servers (there are none). The only outbound traffic is the audio or text you choose to send to your configured STT and LLM providers. To open the data folder directly, go to **Settings → About → Open data folder**.
+
+## Data location
+
+```text
+%APPDATA%\Clerisy\
+├── clerisy.db
+├── settings.json
+├── secrets.json
+└── audio\
+    └── <meeting-id>\
+        ├── mic.webm
+        └── system.webm
+```
+
+`%APPDATA%` resolves to `C:\Users\<YourName>\AppData\Roaming` on a standard Windows installation. You can also reach it by typing `%APPDATA%\Clerisy` directly into the Windows Explorer address bar.
+
+## Files
+
+<AccordionGroup>
+  <Accordion title="clerisy.db — SQLite database">
+    The main application database. Contains every table Clerisy uses:
+
+    - **projects** — project name, description, creation date
+    - **items** — typed project-state entries (requirements, decisions, tasks, risks, deadlines, open questions) with owners, due dates, and version numbers
+    - **item_history** — per-item audit trail: who changed it, in which meeting, and the verbatim quote
+    - **meetings** — meeting metadata, status, source app, and error state
+    - **segments** — transcript lines, with speaker, timestamps, and source stream
+    - **reports** — Impact Report metadata, model used, and summary
+    - **proposals** — individual proposed changes from each report, with evidence quotes and approval status
+    - **questions** — "Ask the project" queries and their sourced answers
+
+    The database uses `node:sqlite` (Node's built-in SQLite binding), so no native addon is required.
+  </Accordion>
+  <Accordion title="settings.json — application settings">
+    Human-readable JSON file containing all non-secret settings. You can inspect it with any text editor, but editing it by hand is not recommended — Clerisy validates each field against its expected type on startup and falls back to the default for any value that doesn't pass. Clerisy writes settings atomically (write to a temp file, then rename over the target) so a crash mid-write never leaves a corrupt file.
+  </Accordion>
+  <Accordion title="secrets.json — encrypted API keys">
+    Stores the ciphertext of every API key you have entered. Each value is encrypted with **Windows DPAPI** via Electron's `safeStorage.encryptString()` before being written, and decrypted with `safeStorage.decryptString()` when needed by the main process. The renderer process never sees the plaintext values.
+
+    ```typescript
+    export function setSecret(name: SecretName, value: string): void {
+      if (!safeStorage.isEncryptionAvailable())
+        throw new Error('OS encryption is not available; cannot store API keys safely.')
+      const secrets = readSecrets()
+      if (value) secrets[name] = safeStorage.encryptString(value).toString('base64')
+      else delete secrets[name]
+      writeJsonAtomic(secretsFile(), secrets)
+    }
+    ```
+  </Accordion>
+  <Accordion title="audio\<meeting-id>\mic.webm — microphone recording">
+    The WebM/Opus recording of your microphone for a given meeting. Each meeting gets its own UUID-named folder. The file is created during recording and finalized when the meeting ends. It is subject to the `audioRetention` policy and can be deleted individually from the meeting page.
+  </Accordion>
+  <Accordion title="audio\<meeting-id>\system.webm — system audio recording">
+    The WebM/Opus loopback recording of all system audio (what plays through your speakers or headphones) for a given meeting. Captured simultaneously with the mic stream. Contains the voices of remote participants in video calls. Also subject to `audioRetention` and can be deleted individually.
+  </Accordion>
+</AccordionGroup>
+
+## Recording retention
+
+The `audioRetention` setting controls when Clerisy automatically deletes the `.webm` audio files for past meetings. Transcripts, Impact Reports, proposals, and item history are **never** deleted by this policy — only the raw audio.
+
+<Tabs>
+  <Tab title="keep (default)">
+    Recordings are never deleted automatically. They remain on disk until you delete them manually from the meeting page or from **Settings → Recording** (which can delete all recordings at once).
+
+    This is the default because deleting recordings by surprise would be unexpected for new users.
+  </Tab>
+  <Tab title="transcribed">
+    A recording is deleted as soon as its transcription finishes successfully — meaning no errors occurred and at least one transcript segment was produced. If transcription fails, the audio is kept so you can retry.
+
+    ```typescript
+    export function deleteAfterTranscription(
+      retention: AudioRetention,
+      errors: string[],
+      segments: number
+    ): boolean {
+      return retention === 'transcribed' && errors.length === 0 && segments > 0
+    }
+    ```
+
+    Good choice if you want to save disk space but don't need the audio after transcription.
+  </Tab>
+  <Tab title="7d">
+    Recordings older than 7 days are deleted on Clerisy's next retention sweep. Meetings that are still recording or transcribing are never touched, regardless of age.
+  </Tab>
+  <Tab title="30d">
+    Recordings older than 30 days are deleted. Otherwise identical to the `7d` policy. A good balance between keeping recent audio available for re-transcription and not accumulating months of recordings.
+  </Tab>
+</Tabs>
+
+## Managing storage
+
+**Settings → Recording** shows the total disk space used by all recordings and how many meetings have audio on disk. From there you can click **Delete all recordings** to remove every audio file at once while keeping all transcripts and reports.
+
+To delete only one meeting's audio, open that meeting's page and click **Delete recording**. The transcript and Impact Report remain intact.
+
+<Note>
+  The retention sweep skips any meeting whose status is `recording` or `transcribing`, so in-progress work is always protected regardless of the policy.
+
+  ```typescript
+  return meetings
+    .filter((m) => m.status !== 'recording' && m.status !== 'transcribing')
+    .filter((m) => Date.parse(m.startedAt) < cutoff && ...)
+    .map((m) => m.id)
+  ```
+</Note>
+
+<Warning>
+  **`secrets.json` is tied to your Windows user account.** DPAPI binds the encryption key to your Windows login credentials. Copying `secrets.json` to another machine — or even to a different Windows user account on the same machine — will not work. The API keys cannot be recovered from the file alone. If you migrate to a new machine, re-enter your API keys in Settings after installing Clerisy.
+</Warning>
+
+<Note>
+  Uninstalling Clerisy does **not** delete your data. The `%APPDATA%\Clerisy` folder and all its contents — database, settings, secrets, and recordings — remain on disk after uninstallation. To remove your data permanently, delete the `%APPDATA%\Clerisy` folder manually after uninstalling.
+</Note>

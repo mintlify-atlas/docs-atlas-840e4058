@@ -1,0 +1,81 @@
+---
+title: "Approval Flow: Review and Apply Meeting Changes"
+sidebarTitle: "Approval Flow"
+description: "Clerisy never updates your project automatically. Review each AI proposal, accept or edit what fits, reject what doesn't, and apply the batch in one click."
+---
+
+Clerisy puts you in control of every change to your project. After a meeting is analyzed, the Impact Report presents each proposed change individually — with its category, operation, evidence quote, speaker, confidence score, and impact level. You decide what to accept, what to tweak, and what to reject. Only when you click **Apply** does the project state actually change, and the result is a new versioned snapshot with a clear record of what was written and what was said to justify it.
+
+## Proposal statuses
+
+Every proposal moves through a simple lifecycle as you work through the Impact Report.
+
+| Status | Meaning |
+|---|---|
+| `pending` | The proposal has not been acted on yet. This is the default state when a report is first generated. |
+| `accepted` | You have approved this proposal. It is included in the next Apply batch. |
+| `rejected` | You have dismissed this proposal. It will not be applied and is hidden from the active review list. |
+| `applied` | The proposal has been applied to the project state. It is now immutable. |
+
+## The review workflow
+
+<Steps>
+  <Step title="Open the Impact Report">
+    Navigate to the meeting page. Once analysis is complete, the Impact Report tab shows the AI's proposed changes, a short summary of how the project changed, and the number of proposals dropped by the hallucination guard.
+  </Step>
+  <Step title="Read each proposal">
+    Each card shows the proposal's category label, the operation it will perform (Create, Update, Close, Supersede, or Flag), the evidence quote with the speaker's name, the confidence score, and the impact level. High-impact proposals appear first.
+  </Step>
+  <Step title="Click a quote to verify">
+    Click any evidence quote to jump directly to that line in the transcript panel. You can read the surrounding context to check whether the proposal makes sense before deciding.
+  </Step>
+  <Step title="Accept, edit, or reject">
+    - **Accept** (✓ Accept) — marks the proposal `accepted` and includes it in the next Apply.
+    - **Edit** — opens an inline editor so you can adjust the title, body, owner, due date, or item type before accepting. Your edited version is what gets applied.
+    - **Reject** (✗ Reject) — marks the proposal `rejected` and removes it from the review queue. Rejected proposals can be un-rejected if you change your mind before applying.
+  </Step>
+  <Step title="Use Accept all firm for a fast first pass">
+    Click **Accept all firm** to accept every `firm`-strength proposal with a confidence of 0.7 or above in one action. This shortcut never automatically accepts `close` or `supersede` operations, since those remove or replace existing items and deserve individual review.
+  </Step>
+  <Step title="Click Apply N changes">
+    When you are satisfied with your selections, click **Apply N changes** (where N is the count of accepted proposals). Clerisy writes a new state version, updates the project board, and marks the meeting as `applied`.
+  </Step>
+</Steps>
+
+## What Apply does
+
+Clicking Apply triggers `applyApproved`, which runs inside a single database transaction. For each accepted proposal, in order:
+
+- **create** — a new item is written to the project board and a history entry records which meeting created it and what was said.
+- **update** — the target item's changed fields are written and its version number increments. Only fields that actually differ are recorded in the history entry.
+- **close** — the target item's status is set to `done` and a history entry notes it was closed.
+- **supersede** — the old item's status is set to `superseded`, a new item is created with the proposal's content, and both items receive history entries linking them to each other.
+- **flag** — a new open question is created (`"Resolve conflict: …"`) and, if the conflicting item still exists, it also gets a history entry noting the conflict.
+
+After all items are updated, a single `StateVersion` record is written linking all the changes to this meeting. The meeting's status advances to `applied`.
+
+<Accordion title="What happens if a target item changed since analysis?">
+  When you analyze a meeting and then update an item manually before applying, Clerisy detects the mismatch using the `targetVersion` field recorded when the proposal was created. Stale proposals — ones whose target item was changed or deleted in the meantime — are skipped rather than applied. You receive a list of skipped proposals with a reason for each, and they remain `accepted` so you can re-apply after resolving the conflict manually.
+</Accordion>
+
+## Editing proposals
+
+Before accepting a proposal, you can edit any of these fields to reflect your judgment rather than the AI's interpretation:
+
+- **Title** — rename the item to fit your project's terminology.
+- **Body** — add, remove, or rewrite the detail text.
+- **Owner** — correct or assign an owner if the transcript attribution was ambiguous.
+- **Due date** — adjust the date or add one that was implied but not parsed.
+- **Item type** — change the type if the AI miscategorized the change (for example, promoting a `task` to a `decision`).
+
+Editing a proposal does not affect its evidence or its link to the transcript. The edit is saved immediately; you can continue reviewing other proposals and come back.
+
+## Change history
+
+After you apply a report, the project's **Change history** tab shows a reverse-chronological timeline of every state version. Each entry lists the meeting that produced it and a summary line for every change — for example, `"Changed deadline "MVP launch": dueDate 2025-08-01 → 2025-09-15"`. You can expand any entry to see the full list of changes from that meeting.
+
+Individual items also carry their own history in their detail panel, showing every meeting that touched them, who spoke, and the verbatim quote that justified each change.
+
+<Note>
+  Applied proposals are immutable — the `updateProposal` API rejects any attempt to edit or change the status of a proposal that has already been applied. If the applied result is wrong, update the item directly on the project board. That edit is recorded in the item's history as a manual change, keeping the audit trail intact.
+</Note>

@@ -1,0 +1,114 @@
+---
+title: "Troubleshooting Common Clerisy Issues"
+sidebarTitle: "Troubleshooting"
+description: "Solutions to the most common Clerisy problems — installation warnings, recording issues, transcription failures, speaker labels, and startup behaviour."
+---
+
+Most Clerisy issues fall into one of a small number of categories: Windows security prompts on first install, audio or transcription configuration, LLM provider keys, or speaker-labelling quirks from the local model. The entries below cover each of these in detail. If your problem is not listed, the GitHub repository is the best place to file it.
+
+<AccordionGroup>
+  <Accordion title="Windows SmartScreen blocked the installer">
+    Clerisy is not yet code-signed, so Windows SmartScreen shows a warning the first time you install it. This is expected.
+
+    To proceed:
+    1. Click **More info** in the SmartScreen dialog.
+    2. Click **Run anyway**.
+
+    Once the app is installed and running, future updates download and install silently in the background — you will not see the SmartScreen prompt again for updates.
+  </Accordion>
+
+  <Accordion title="The floating widget doesn't appear">
+    The floating widget is the small always-on-top window that shows the recording timer, the latest transcript line, and quick controls.
+
+    - Check that **Settings → Recording → Show floating widget** is enabled.
+    - If Clerisy is running in the background, the widget may have drifted behind other windows. Drag it to a visible position — it remembers where you leave it.
+    - If the widget is enabled but still invisible, try toggling the setting off and on again to force it to reappear at its last saved position.
+  </Accordion>
+
+  <Accordion title="Meeting auto-detection didn't trigger">
+    Auto-detection watches the Windows mic-usage privacy registry. When an application acquires the microphone, Clerisy detects it and offers to start recording.
+
+    - Confirm that **Settings → Recording → Detect meetings automatically** is enabled.
+    - Some browser-based meeting apps (Chrome, Edge, Firefox running Zoom, Meet, or Teams in a tab) may not register in the registry the same way a native app does. If detection misses a meeting, start recording manually with `Ctrl+Shift+M` or the **Capture** button.
+    - If detection was working before and has stopped, try quitting and restarting Clerisy.
+  </Accordion>
+
+  <Accordion title="Transcription failed">
+    The meeting page shows which stream failed — microphone or system audio — and the error message.
+
+    - If a recording was saved, use **Transcribe recording** on the meeting page to retry. Clerisy will re-run the full pipeline from that recording.
+    - Check that your speech-to-text provider key is valid in **Settings → Transcription**. Use **Test** to verify the key works.
+    - For the local provider, make sure the model is fully downloaded (**Settings → Transcription → Local model**).
+    - If one stream fails and the other succeeds, the successful stream's transcript is kept. You can paste or import the missing stream's transcript manually.
+  </Accordion>
+
+  <Accordion title='"No speech was found in that file"'>
+    This error appears when you import an audio or video file and the speech-to-text provider returns no segments.
+
+    Common causes:
+    - The file is silent or contains only background noise.
+    - The file is corrupted or uses an unsupported codec.
+    - The file is too short for the provider's silence-detection threshold.
+
+    Verify the file plays correctly in another application. Supported formats are **mp3**, **m4a**, **wav**, **webm**, **ogg**, and **mp4**. If the file plays but transcription still fails, try converting it to a different format (for example, wav) and importing again.
+  </Accordion>
+
+  <Accordion title="The local STT model download is stuck">
+    The local speech-to-text model is approximately **665 MB**. On a slow connection, the download can appear to stall.
+
+    - Wait a few minutes — progress bars update in chunks and may pause between files.
+    - If the download has genuinely stopped, click **Cancel download** and then start it again. The download resumes from where it left off; you will not re-download completed files.
+    - Check that `%APPDATA%\Clerisy` has enough free disk space. The model needs at least 700 MB free after download.
+    - Check your internet connection. Corporate VPNs or proxies can interrupt large downloads.
+  </Accordion>
+
+  <Accordion title="Analysis failed">
+    The meeting page shows an error when the AI analysis step could not complete.
+
+    - Check that your LLM provider key is valid in **Settings → AI Model**. Use **Test connection** to verify.
+    - If you are using **Ollama**, confirm that the model is pulled (`ollama pull <model>`) and that the Ollama server is running on the configured base URL (default: `http://localhost:11434`).
+    - If you are using an **OpenAI-compatible** server, confirm the base URL and model name are correct.
+    - After fixing the issue, use **Re-analyze** on the meeting page to run the analysis again without re-transcribing.
+  </Accordion>
+
+  <Accordion title="Speaker labels are wrong">
+    Speaker labelling, especially from the local provider, can split one person's voice across multiple labels or assign the wrong name.
+
+    - Use **Map speakers** on the meeting page to assign real names to the numbered labels.
+    - Use **Merge speakers** to join two labels that belong to the same person. The merged label takes the name you choose.
+    - If the labels are broadly wrong, use **Detect speakers again**. Enter the correct number of other participants in the meeting — the local model then clusters voices into exactly that many speakers and re-labels the transcript.
+
+    <Tip>
+      Setting the expected number of participants when you start recording (or later with **Detect speakers again**) gives the local speaker-label model the best chance of separating voices correctly.
+    </Tip>
+  </Accordion>
+
+  <Accordion title="Settings were reset after an update">
+    Settings are stored in `settings.json` in `%APPDATA%\Clerisy`. When a new version of Clerisy adds a setting that was not in your file, that field is initialised to its default value the next time the app starts. Your existing settings are **not overwritten**.
+
+    If a setting appears to have changed, check whether it was a new field introduced in the update. You can open the data folder directly from **Settings → About → Open data folder** to inspect the file.
+  </Accordion>
+
+  <Accordion title="Clerisy won't start at login">
+    Windows' Task Manager (Startup apps tab) and the Settings app (Apps → Startup) can disable startup entries independently of Clerisy.
+
+    To re-register the entry:
+    1. Open **Settings → Recording and hotkeys**.
+    2. Toggle **Start with Windows** off.
+    3. Toggle **Start with Windows** on again.
+
+    This forces Clerisy to re-register its startup entry with Windows.
+
+    <Warning>
+      The **Start with Windows** toggle only works in the installed build of Clerisy. It has no effect when running from source with `npm run dev`.
+    </Warning>
+  </Accordion>
+</AccordionGroup>
+
+## Getting help
+
+If your issue is not covered here, or you have found a bug, please open an issue on the GitHub repository:
+
+[https://github.com/iamgauravjoshi/Clerisy](https://github.com/iamgauravjoshi/Clerisy)
+
+Include the Clerisy version (visible in **Settings → About**), a description of what you expected to happen, and what happened instead. Attaching the relevant meeting's error message from the meeting page is also helpful.

@@ -1,0 +1,120 @@
+---
+title: "Architecture Overview: How Clerisy Is Built"
+sidebarTitle: "Architecture"
+description: "Clerisy's Electron process model, key source modules, the post-meeting pipeline, SQLite data model, and the full technology stack."
+---
+
+Clerisy is an Electron desktop application that follows the standard Electron multi-process model: a privileged Node.js main process handles the database, audio pipeline, and all AI calls, while a sandboxed Chromium renderer process runs the React UI. The two sides communicate exclusively through a typed IPC bridge, so the renderer never touches the filesystem, the database, or any API keys directly.
+
+## Process model
+
+<CardGroup cols={2}>
+  <Card title="Main process" icon="server">
+    Lives in `src/main/`. Runs as a privileged Node.js process. Owns the SQLite database, audio recording files, IPC handlers, the system tray, global hotkeys, the floating widget, and every AI and speech-to-text call. Keys are stored encrypted with Windows DPAPI and never leave this process.
+  </Card>
+  <Card title="Renderer process" icon="monitor">
+    Lives in `src/renderer/`. A React + Tailwind UI running inside a sandboxed Chromium window. Has no direct access to Node APIs. All data fetching and mutations go through the IPC bridge exposed by the preload.
+  </Card>
+  <Card title="Preload" icon="plug">
+    Lives in `src/preload/`. Runs in a privileged context at window creation time. Uses Electron's `contextBridge` to expose a typed `api` object to the renderer. The allow-list is derived from the shared `MAIN_EVENTS` constant, so the preload and main process can never drift out of sync.
+  </Card>
+  <Card title="Shared" icon="layers">
+    Lives in `src/shared/`. TypeScript types, constants, and utilities imported by all three processes. Includes every domain type (`Item`, `Proposal`, `Meeting`, `Evidence`, `Settings`, etc.) and the `MainEvents` event map.
+  </Card>
+</CardGroup>
+
+## Key modules
+
+| Source file | Purpose |
+|---|---|
+| `src/main/index.ts` | Window, tray, global hotkeys, system-audio loopback handler, detector wiring |
+| `src/main/api.ts` | Every IPC call the UI can make; post-meeting pipeline (transcribe → analyze → notify) |
+| `src/main/analysis.ts` | Prompt, structured-output schema, evidence validation, applying approved changes |
+| `src/main/llm.ts` | Provider-agnostic model factory (Vercel AI SDK) |
+| `src/main/stt.ts` | Deepgram / Whisper transcription; mic/system echo de-duplication |
+| `src/main/detector.ts` | Meeting detection from Windows mic-usage registry |
+| `src/main/db.ts` | SQLite schema and queries (`node:sqlite`, so no native modules) |
+| `src/main/transcriptParser.ts` | VTT / SRT / Zoom / plain transcript import |
+| `src/renderer/src/features/recording/recorder.ts` | MediaRecorder capture: continuous recordings plus rolling live chunks |
+| `src/renderer/src/*View.tsx` | React UI views |
+
+## Post-meeting pipeline
+
+When a recording stops, Clerisy automatically runs a multi-step pipeline in the main process. You receive a desktop notification when the Impact Report is ready.
+
+<Steps>
+  <Step title="Recording stops">
+    The renderer calls `stopRecording()`. The meeting's status is set to `transcribing` and the change is broadcast to the UI.
+  </Step>
+  <Step title="Full-file transcription">
+    `finishMeeting()` runs `transcribeRecordings()`. Both the mic stream (`mic.webm`) and the system audio stream (`system.webm`) are transcribed in parallel. The UI shows per-stream progress via `meeting:progress` events.
+  </Step>
+  <Step title="Echo de-duplication">
+    `mergeStreams()` merges the two transcript streams. Because the mic picks up the room speakers, any mic line that closely matches a system line is discarded as an echo. The result is a single, clean chronological segment list.
+  </Step>
+  <Step title="Status set to ready">
+    The merged segments replace the live (chunked) preview in the database. The meeting status becomes `ready`. If audio retention is set to delete after transcription and no stream failed, the recording files are removed.
+  </Step>
+  <Step title="AI impact analysis">
+    `analyzeMeeting()` calls the configured LLM with the full transcript and current project state. The model returns a structured list of proposals — each with a category, operation, evidence quotes, impact level, and confidence score.
+  </Step>
+  <Step title="Evidence validation">
+    Every evidence quote in the AI response is checked against the stored transcript segments in code. Proposals whose quotes do not match any real segment are discarded. The count of dropped proposals is stored in the `Report` row as `droppedCount`.
+  </Step>
+  <Step title="Impact Report ready">
+    The meeting status is set to `analyzed`. A desktop notification is sent. Clicking it opens the meeting page directly so you can begin reviewing proposals.
+  </Step>
+</Steps>
+
+## Data model
+
+Clerisy stores everything in a single SQLite database (`clerisy.db`) in `%APPDATA%\Clerisy`. The schema uses `node:sqlite` — the built-in SQLite module added in Node 22 — so there are no native binary modules that could break across Electron versions.
+
+<AccordionGroup>
+  <Accordion title="Core tables">
+    | Table | Contents |
+    |---|---|
+    | `projects` | Project name and description |
+    | `items` | Typed project-state items (requirements, decisions, tasks, risks, deadlines, questions) with owner, due date, status, and version |
+    | `item_history` | Per-item audit log: who changed it, in which meeting, and what quote drove the change |
+    | `state_versions` | A snapshot of every set of changes applied from a meeting, for the Change history view |
+    | `stakeholders` | Named participants associated with a project |
+  </Accordion>
+  <Accordion title="Meeting tables">
+    | Table | Contents |
+    |---|---|
+    | `meetings` | One row per meeting: project, title, timestamps, status, source app, expected speaker count |
+    | `segments` | Transcript lines: speaker, start/end time in seconds, text, source (`mic`, `system`, or `manual`) |
+    | `marks` | Important moments flagged during recording with `Ctrl+Shift+D` |
+  </Accordion>
+  <Accordion title="Analysis tables">
+    | Table | Contents |
+    |---|---|
+    | `reports` | One Impact Report per meeting: model used, summary, and dropped-proposal count |
+    | `proposals` | AI-generated change proposals with category, operation, evidence, strength, confidence, and approval status |
+    | `questions` | Questions asked via "Ask the project" and their structured answers |
+  </Accordion>
+</AccordionGroup>
+
+## Tech stack
+
+<CardGroup cols={2}>
+  <Card title="Electron 44" icon="box">
+    Desktop shell. Provides the main/renderer process split, global shortcuts, tray, notifications, system-audio loopback capture, and auto-update via `electron-updater`.
+  </Card>
+  <Card title="React 19 + TypeScript 7" icon="code">
+    Renderer UI. Strict TypeScript throughout; types are shared between main and renderer via `src/shared/types.ts`.
+  </Card>
+  <Card title="Tailwind CSS 4" icon="paintbrush">
+    Utility-first styling in the renderer. Design tokens defined as CSS custom properties, exposed to Tailwind via `@theme`.
+  </Card>
+  <Card title="Vercel AI SDK 7" icon="sparkles">
+    Provider-agnostic LLM client used in the main process. Supports Anthropic, OpenAI, Google, OpenRouter, Ollama, and any OpenAI-compatible server via a single `getModel()` factory.
+  </Card>
+  <Card title="sherpa-onnx-node 1.13.8" icon="mic">
+    Local, offline speech-to-text. Runs entirely on device after a one-time 665 MB model download. No API key required.
+  </Card>
+  <Card title="Zod 4 + node:sqlite" icon="database">
+    Zod validates IPC arguments and the LLM's structured output. `node:sqlite` (built into Node 22) provides the SQLite driver with no native binary modules.
+  </Card>
+</CardGroup>

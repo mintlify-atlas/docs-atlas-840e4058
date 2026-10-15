@@ -1,0 +1,118 @@
+{
+  "projectType": "saas",
+  "projectName": "Clerisy",
+  "projectDescription": "A Windows desktop app that tracks living project state across meetings — recording, transcribing, and using AI to propose evidence-backed changes to requirements, decisions, tasks, risks, and open questions after every meeting.",
+  "theme": "luma",
+  "primaryColor": "#2b3fe0",
+  "lightColor": "#ffffff",
+  "darkColor": "#1776e2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/project-state",
+              "concepts/meetings-and-capture",
+              "concepts/impact-analysis",
+              "concepts/approval-flow"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/recording",
+              "features/transcription",
+              "features/impact-report",
+              "features/ask-the-project",
+              "features/sharing"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/ai-models",
+              "configuration/speech-to-text",
+              "configuration/recording-settings",
+              "configuration/data-storage"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": [
+              "reference/keyboard-shortcuts",
+              "reference/transcript-formats",
+              "reference/architecture",
+              "reference/troubleshooting"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Botless meeting capture — records mic and system audio as separate streams, works with Zoom, Teams, Meet, Slack, Discord",
+    "Living project state board — typed items (requirements, decisions, tasks, risks, deadlines, open questions) with full version history",
+    "AI impact analysis — compares transcript against project state and proposes evidence-backed changes after each meeting",
+    "Hallucination guard — every proposed change must cite a verbatim transcript quote, validated in code",
+    "Approval workflow — accept, edit, or reject each proposal before writing a new project state version",
+    "Ask the project — Q&A grounded exclusively in the project's own state and meeting transcripts",
+    "Bring-your-own model — Claude, OpenAI, Gemini, OpenRouter, Ollama, or any OpenAI-compatible server",
+    "Local offline speech-to-text — free English transcription with speaker labeling via sherpa-onnx, no upload required",
+    "Meeting auto-detection — watches Windows mic-usage registry, auto-stops when meeting app releases the mic",
+    "Share reports — export to Slack, WhatsApp, Markdown, or PDF with configurable evidence and transcript inclusion",
+    "Floating recording widget — always-on-top controls with live transcript line, mark moment, and stop",
+    "Global hotkeys — Ctrl+Shift+M to record, Ctrl+Shift+D to mark an important moment"
+  ],
+  "publicApiSurface": [
+    "api.getSettings() → Settings",
+    "api.saveSettings(patch) → Settings",
+    "api.setSecret(provider, value) → Settings",
+    "api.listProjects() → Project[]",
+    "api.createProject(name, description) → Project",
+    "api.updateProject(id, name, description) → Project",
+    "api.deleteProject(id) → void",
+    "api.listItems(projectId) → Item[]",
+    "api.createItem(fields) → Item",
+    "api.updateItem(id, patch) → Item",
+    "api.getItemHistory(id) → ItemHistoryEntry[]",
+    "api.listStateVersions(projectId) → StateVersion[]",
+    "api.listMeetings(projectId) → Meeting[]",
+    "api.getMeeting(id) → Meeting",
+    "api.startRecording(projectId, title, sourceApp, expectedSpeakers) → Meeting",
+    "api.stopRecording(meetingId) → void",
+    "api.recordingChunk(meetingId, source, offsetSec, data) → Segment[]",
+    "api.importTranscript(projectId, title, text) → Meeting",
+    "api.importAudio(projectId) → string | null",
+    "api.analyzeMeeting(meetingId) → Report",
+    "api.getReport(meetingId) → Report",
+    "api.updateProposal(id, patch) → void",
+    "api.applyApproved(meetingId) → void",
+    "api.askProject(projectId, question) → ProjectQuestion",
+    "api.listQuestions(projectId) → ProjectQuestion[]",
+    "api.relabelSpeakers(meetingId, map) → void",
+    "api.detectSpeakers(meetingId, expectedSpeakers) → { speakers: number }",
+    "api.previewShare(meetingId, format, options) → string",
+    "api.copyShare(meetingId, format, options) → void",
+    "api.exportShare(meetingId, kind, options) → void",
+    "api.downloadLocalModel() → void",
+    "api.getLocalModelStatus() → LocalModelStatus",
+    "api.testLocalStt() → void",
+    "api.testLlm() → string",
+    "MainEvents['meeting:changed'] — broadcast when a meeting's data changes",
+    "MainEvents['transcript:appended'] — broadcast when live transcript lines are added",
+    "MainEvents['meeting:detected'] — broadcast when a meeting app starts using the microphone",
+    "MainEvents['navigate:meeting'] — tells the renderer to open a specific meeting",
+    "MainEvents['localModel:status'] — local model download progress"
+  ]
+}

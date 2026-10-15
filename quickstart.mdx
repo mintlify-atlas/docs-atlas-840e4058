@@ -1,47 +1,102 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get started with Clerisy in 5 minutes"
+sidebarTitle: "Quickstart"
+description: "Install Clerisy, connect an AI model and speech-to-text provider, record your first meeting, and approve your first Impact Report."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+This guide walks you from a fresh install to a completed Impact Report. By the end you will have connected an AI model, chosen a speech-to-text provider, recorded a meeting, reviewed the proposals the AI surfaced, and applied them to create your first versioned project state snapshot. The whole flow takes about five minutes to set up — less time than your next standup.
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+## From zero to first Impact Report
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
-
-    ```bash
-    npm install your-package
-    ```
+  <Step title="Download and install Clerisy">
+    Download the latest `Clerisy-Setup-x.y.z.exe` from GitHub Releases and run the installer. Clerisy appears in the system tray and starts in the background. See the [Installation guide](/installation) for detailed steps, SmartScreen notes, and how to build from source.
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+  <Step title="Connect an AI model">
+    Open **Settings → AI Model** and choose your provider:
 
-    ```bash
-    your-cli init
-    ```
+    | Provider | Notes |
+    |---|---|
+    | **Anthropic** | Claude Sonnet (default) — strong at structured analysis |
+    | **OpenAI** | GPT-4o and newer models |
+    | **Google** | Gemini 2.5 Pro |
+    | **OpenRouter** | Route to any model via a single key |
+    | **Ollama** | Runs locally — no API key, no data sent to the cloud |
+    | **OpenAI-compatible** | Any server that speaks the OpenAI API |
+
+    Paste your API key (or base URL for Ollama / custom servers). Keys are encrypted with Windows DPAPI and stored in `secrets.json` — they never leave the main process.
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+  <Step title="Set up speech-to-text">
+    Open **Settings → Transcription** and pick a provider:
 
-    ```bash
-    your-cli start
-    ```
+    <Tabs>
+      <Tab title="Local (free, recommended)">
+        No API key, no upload, no cost. After a one-time **665 MB model download**, all transcription runs on your machine. Supports English and labels other participants' voices as Speaker 1, 2, and so on.
+
+        Select **Local** and click **Download model**. The download runs in the background — you can start using Clerisy straight away and record once the model finishes installing.
+      </Tab>
+      <Tab title="Deepgram">
+        Cloud transcription with speaker separation. Paste a Deepgram API key in **Settings → Transcription → Deepgram key**. Well-suited to meetings with multiple speakers or accents that challenge the local model.
+      </Tab>
+      <Tab title="OpenAI Whisper">
+        Uses the OpenAI Whisper API. Reuses the OpenAI key you already entered in **Settings → AI Model** — no separate key needed.
+      </Tab>
+      <Tab title="Groq Whisper">
+        Fast cloud transcription via Groq. Paste a Groq API key in **Settings → Transcription → Groq key**.
+      </Tab>
+    </Tabs>
+
+    <Info>
+      If your meetings include Hindi or Hinglish, set **Meeting language** to **Hinglish** and pick a cloud fallback — the local model is English-only.
+    </Info>
+  </Step>
+  <Step title="Create your first project">
+    Click **New project** in the sidebar, enter a name and a short description, and click **Create**. The project opens with an empty state board. Add a few requirements, decisions, or open questions so the AI has context to work with — or proceed straight to recording and build the state from your meeting.
+  </Step>
+  <Step title="Record a meeting">
+    Start a meeting in Zoom, Teams, Google Meet, or any other app. When Clerisy detects the microphone becoming active, the floating widget offers to record. Click **Record**, or press `Ctrl+Shift+M` from anywhere on your desktop.
+
+    The floating widget stays on top of your meeting app and shows the recording timer, the latest transcript line, and three buttons:
+
+    - **Mark** (`Ctrl+Shift+D`) — flags an important moment; the AI weights marked moments more heavily.
+    - **Stop** — ends the recording and begins transcription.
+    - **Open** — brings the Clerisy window to the front.
+
+    Press `Ctrl+Shift+M` again, or click **Stop**, when the meeting ends.
+
+    <Tip>
+      Drag the floating widget to any corner of your screen — it remembers its position between sessions. You can hide it entirely in **Settings → Recording** if you prefer the global hotkeys alone.
+    </Tip>
+  </Step>
+  <Step title="Review the Impact Report">
+    Once transcription finishes, Clerisy sends the transcript and your project state to the AI and builds an Impact Report. Open the meeting and scroll through the proposals. Each one shows:
+
+    - **Category** — requirement, decision, action item, scope change, risk, and so on.
+    - **Speaker** and **impact level** (high / medium / low).
+    - **Firm or tentative** — how confident the model is that the change was agreed.
+    - **Evidence** — a verbatim quote from the transcript. Click it to jump to that line.
+
+    Accept, edit, or reject each proposal individually. Use **Accept all firm** to approve every high-confidence item in one click.
+  </Step>
+  <Step title="Apply changes to create a new state version">
+    When you are satisfied with your selections, click **Apply**. Clerisy writes a new versioned snapshot of the project state. Open **Change history** at any time to see how the project evolved meeting by meeting, with the quotes that drove each change.
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+<Note>
+  If you chose the **Local** speech-to-text provider, the first recording will queue for transcription until the 665 MB model finishes downloading. You will see a progress indicator on the meeting page — no action needed.
+</Note>
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+## Next steps
+
+<CardGroup cols={3}>
+  <Card title="Project State" icon="layer-group" href="/concepts/project-state">
+    Understand how versioned project state works and how to manage items, owners, and history.
+  </Card>
+  <Card title="Recording" icon="circle-dot" href="/features/recording">
+    Learn about botless capture, floating widget options, hotkeys, and audio retention settings.
+  </Card>
+  <Card title="Impact Report" icon="file-chart-line" href="/features/impact-report">
+    Explore the full Impact Report — proposal categories, evidence validation, sharing, and the approval flow.
+  </Card>
+</CardGroup>

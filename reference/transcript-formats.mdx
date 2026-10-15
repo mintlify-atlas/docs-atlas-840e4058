@@ -1,0 +1,79 @@
+---
+title: "Supported Transcript Import Formats"
+sidebarTitle: "Transcript Formats"
+description: "All transcript and audio formats Clerisy can import — WebVTT, SRT, Zoom .txt, plain text, and audio/video files — with sample snippets for each."
+---
+
+Clerisy can produce its own transcript by recording your microphone and system audio, but you can also bring in a transcript from an external source. The parser accepts WebVTT, SRT, Zoom plain-text exports, free-form text, and audio or video files. Speaker labels, timestamps, and consecutive lines from the same speaker are all handled automatically — you rarely need to clean up a file before importing it.
+
+## Supported formats
+
+<AccordionGroup>
+  <Accordion title="WebVTT (.vtt)">
+    The standard web caption format used by Microsoft Teams, Google Meet, and browser-based recorders. Timestamps are read as-is. Speaker names are taken from `<v Speaker>` voice tags when present; if a cue has no voice tag, Clerisy looks for a `Name:` prefix on the first line of the cue.
+
+    ```vtt
+    WEBVTT
+
+    00:00:12.000 --> 00:00:18.000
+    <v Priya>We need to add SSO for the enterprise launch.
+
+    00:00:20.000 --> 00:00:26.000
+    <v Rahul>Agreed. Let's put that in the requirements.
+    ```
+  </Accordion>
+
+  <Accordion title="SubRip (.srt)">
+    The standard subtitle format. There are no dedicated speaker fields in SRT, so Clerisy infers speaker names from lines that start with a name followed by a colon — for example `Priya: text`. If a cue has no such prefix, the previous speaker is continued.
+
+    ```srt
+    1
+    00:00:12,000 --> 00:00:18,000
+    Priya: We need to add SSO for the enterprise launch.
+
+    2
+    00:00:20,000 --> 00:00:26,000
+    Rahul: Agreed. Let's put that in the requirements.
+    ```
+  </Accordion>
+
+  <Accordion title="Zoom .txt transcript">
+    Zoom's plain-text export format, where each line starts with a timestamp followed by the participant name and their words. The parser recognises both the `[Name] 00:01:02` header style and the inline `00:00:12.0 Name: text` style.
+
+    ```text
+    00:00:12.0 Priya: We need to add SSO for the enterprise launch.
+    00:00:20.0 Rahul: Agreed. Let's put that in the requirements.
+    ```
+  </Accordion>
+
+  <Accordion title="Plain text / Markdown">
+    Any text where lines follow the pattern `Speaker: text`, with or without leading timestamps. Clerisy treats anything before a colon (up to 40 characters, no more than five words) as a speaker name, unless the label is a known note keyword such as `Decision:`, `Action item:`, or `Summary:` — those stay with the previous speaker rather than starting a new one.
+
+    ```text
+    Priya: We need to add SSO for the enterprise launch.
+    Rahul: Agreed. Let's put that in the requirements.
+    ```
+
+    Timestamps are optional. If present, they can appear at the start of the line in `[00:01]` or `00:01:02` format.
+  </Accordion>
+
+  <Accordion title="Audio and video files">
+    Clerisy can transcribe audio and video recordings directly. Supported formats are **mp3**, **m4a**, **wav**, **webm**, **ogg** (audio) and **mp4** (video). The file is sent to whichever speech-to-text provider you have configured in **Settings → Transcription**.
+
+    <Note>
+      Importing audio or video requires a speech-to-text provider other than **None** in Settings → Transcription. If no provider is configured, Clerisy will prompt you to choose one before the import dialog opens.
+    </Note>
+  </Accordion>
+</AccordionGroup>
+
+## Pasting a transcript
+
+Use **Capture → Paste transcript** to paste transcript text directly into Clerisy. The parser detects the format automatically — no need to specify whether it is VTT, SRT, Zoom, or plain text. Give the meeting a title, and Clerisy creates a new meeting entry in the project with the parsed segments ready to analyse.
+
+## Importing a transcript file
+
+Use **Capture → Import transcript file** to pick a file from disk. The file picker accepts `.vtt`, `.srt`, `.txt`, and `.md` files. The same auto-detection logic runs on the file contents once it is loaded.
+
+<Tip>
+  If speaker names come through as generic labels like "Speaker 1", use **Map speakers** on the meeting page to assign real names, or **Merge speakers** to combine voices that were incorrectly split across multiple labels.
+</Tip>

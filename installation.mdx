@@ -1,0 +1,106 @@
+---
+title: "Install Clerisy on Windows 10 or 11"
+sidebarTitle: "Installation"
+description: "Download and run the Clerisy installer, build from source, understand where data is stored, and learn how auto-updates work."
+---
+
+Clerisy ships as a standard Windows installer built with NSIS. The installer adds a Start Menu shortcut, an optional desktop shortcut, and a tray entry that launches at sign-in by default. You can also build from source if you want to run the latest uncommitted code or contribute to development. Either way, all application data lives in `%APPDATA%\Clerisy` — completely separate from the install directory.
+
+## Install from release
+
+<Steps>
+  <Step title="Download the installer">
+    Go to the [Clerisy releases page](https://github.com/iamgauravjoshi/MeetingBuddy/releases) on GitHub and download the latest `Clerisy-Setup-x.y.z.exe` asset. Make sure you are on the latest published release — draft releases are not visible to the auto-updater and may be incomplete.
+  </Step>
+  <Step title="Run the installer">
+    Double-click `Clerisy-Setup-x.y.z.exe`. The installer lets you change the installation directory and choose whether to create a desktop shortcut. Click through the prompts and then **Install**.
+
+    <Warning>
+      **Windows SmartScreen will warn on first install** because the app is not yet code-signed. This is expected for v1. Click **More info** → **Run anyway** to proceed. Once Clerisy is installed and running, subsequent updates download and install silently in the background without triggering this prompt again.
+    </Warning>
+  </Step>
+  <Step title="Find Clerisy in the system tray">
+    After installation completes, Clerisy starts automatically and appears as an icon in the Windows system tray (bottom-right of the taskbar — you may need to expand the overflow area). Click the tray icon to open the main window.
+
+    By default, Clerisy is also configured to start with Windows so meetings are detected even before you open the app. You can turn this off in **Settings → Recording and hotkeys → Start with Windows**.
+  </Step>
+  <Step title="Complete the setup checklist">
+    On first launch, a setup checklist guides you through the three steps required before recording:
+
+    1. **Connect an AI model** — choose a provider (Anthropic, OpenAI, Google, OpenRouter, Ollama, or an OpenAI-compatible server) and enter your API key or base URL.
+    2. **Choose a speech-to-text provider** — pick Local (free, English, 665 MB download) or a cloud provider (Deepgram, OpenAI Whisper, or Groq Whisper).
+    3. **Enter your name** — sets the label for your microphone stream in transcripts and reports.
+  </Step>
+</Steps>
+
+## Build from source
+
+Building from source requires **Node.js 22 or newer** and **Windows 10 or 11**. Clerisy uses native Windows APIs (DPAPI for secret encryption, the privacy registry for meeting detection) that are not available on other platforms.
+
+<Steps>
+  <Step title="Clone the repository and install dependencies">
+    ```bash
+    # Requirements: Node 22 or newer, Windows 10 or 11
+    git clone https://github.com/iamgauravjoshi/Clerisy
+    cd Clerisy
+    npm install
+    ```
+  </Step>
+  <Step title="Run in development mode or build a release">
+    ```bash
+    npm run dev          # run with hot reload
+    npm run dist:win     # build release/Clerisy-Setup-x.y.z.exe
+    ```
+
+    `npm run dev` launches Clerisy with Vite hot reload — changes to renderer code reflect instantly without restarting. `npm run dist:win` produces a full installer at `release/Clerisy-Setup-x.y.z.exe` using the same NSIS pipeline as the published releases.
+  </Step>
+  <Step title="Optional: run tests and type checks">
+    ```bash
+    npm test             # unit and pipeline tests (Vitest)
+    npm run typecheck    # tsc --noEmit for both main and renderer
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Source builds run with `state: 'unsupported'` for the auto-updater — the installer handles updates, and running from source bypasses that mechanism. The setup checklist and all other features work identically in dev mode.
+</Note>
+
+## Data storage
+
+All application data is written to `%APPDATA%\Clerisy` — never to the installation directory. You can open this folder directly from **Settings → About → Open data folder**.
+
+<AccordionGroup>
+  <Accordion title="clerisy.db — SQLite database">
+    The main SQLite database. Stores all projects, state items, meetings, transcript segments, proposals, reports, and questions. Managed by the `node:sqlite` built-in — no native modules required.
+  </Accordion>
+  <Accordion title="settings.json — application settings">
+    Non-secret settings: chosen providers, hotkey bindings, theme, audio retention policy, recording options, and so on. Plain JSON — safe to inspect. Invalid values fall back to defaults on next launch.
+  </Accordion>
+  <Accordion title="secrets.json — encrypted API keys">
+    API keys and other credentials, encrypted with **Windows DPAPI** (`safeStorage` in Electron). The encrypted blobs are base64-encoded in this file. The decrypted values never leave the main process and are never sent to the renderer. Copying this file to another machine will not work — DPAPI encryption is tied to the Windows user account.
+  </Accordion>
+  <Accordion title="audio\<meeting-id>\{mic,system}.webm — recordings">
+    Raw WebM audio files, one per recorded stream per meeting. These are only needed for re-transcription; transcripts and reports are always kept regardless of the audio retention setting. You can configure retention in **Settings → Recording → Recording retention** (keep, delete after transcription, delete after 7 days, or delete after 30 days).
+  </Accordion>
+</AccordionGroup>
+
+## Auto-updates
+
+Installed copies of Clerisy check for new versions automatically. The updater runs a check a few minutes after launch and then every few hours — it never checks while a recording is active.
+
+When a new version is available, it downloads in the background. Clerisy shows a **Restart to update** prompt in the interface when the download is complete. If you do not restart manually, the update installs the next time Clerisy quits normally.
+
+<Note>
+  Auto-updates are served from **GitHub Releases** in the [`iamgauravjoshi/MeetingBuddy`](https://github.com/iamgauravjoshi/MeetingBuddy/releases) repository. Draft releases are invisible to the updater — a release only reaches users after it is published. Keep all files on published releases: the next version's differential download relies on the previous `.blockmap` file.
+</Note>
+
+You can disable automatic update checks in **Settings → About → Auto-update** if you prefer to update manually by downloading a new installer.
+
+## Uninstalling
+
+To uninstall Clerisy, go to **Windows Settings → Apps → Clerisy → Uninstall**, or use **Add or remove programs** in the Control Panel.
+
+<Warning>
+  Uninstalling Clerisy does **not** delete your data. The `%APPDATA%\Clerisy` folder — including your database, settings, and any recordings — remains on disk after the app is removed. To delete your data, open **Settings → About → Open data folder** before uninstalling and delete the folder manually.
+</Warning>

@@ -1,0 +1,155 @@
+---
+title: "Impact Report: AI-Proposed Changes from Your Meeting"
+sidebarTitle: "Impact Report"
+description: "After every meeting, Clerisy's AI compares the transcript to your project state and proposes changes — every one backed by a verbatim transcript quote."
+---
+
+The Impact Report is Clerisy's answer to the question "what changed in the project because of this meeting?" Once transcription finishes, the AI reads the full transcript alongside your project's current items — requirements, decisions, tasks, risks, deadlines, and open questions — and proposes any changes it detects. Every proposal must quote the transcript verbatim; proposals whose quotes cannot be matched against a real transcript segment are discarded before the report reaches you. What remains is a structured, evidence-backed list of changes waiting for your approval.
+
+## Report structure
+
+The report opens with a **summary paragraph** written by the model — a few sentences describing what the meeting covered and the overall shape of the changes. Below the summary, proposals are grouped into categories and presented in order of impact:
+
+1. Conflicts with existing project state
+2. Scope changes
+3. Timeline changes
+4. Decisions / commitments
+5. Requirements
+6. Action items
+7. Blockers
+8. Risks
+9. Open questions
+
+Each category heading shows how many proposals it contains. Categories with no proposals are hidden.
+
+## Reading a proposal card
+
+Every proposal card contains several elements that tell you what was said and how confident the model is.
+
+<CardGroup cols={2}>
+  <Card title="Category badge" icon="tag">
+    The proposal category — for example, "Decision / commitment" or "Action item".
+  </Card>
+  <Card title="Operation badge" icon="pencil">
+    What the proposal does to the project state: **New**, **Change**, **Close**, **Replaces**, or **Conflict**.
+  </Card>
+  <Card title="Item type badge" icon="shapes">
+    The type of project item involved: requirement, decision, task, risk, deadline, or question.
+  </Card>
+  <Card title="Title" icon="heading">
+    A short description of the proposed change — what the model understood to be the key point.
+  </Card>
+  <Card title="Field diffs" icon="code-compare">
+    For updates, the before and after values of each changed field (title, body, owner, due date, status).
+  </Card>
+  <Card title="Evidence quote" icon="quote-left">
+    The verbatim transcript segment backing the proposal, with the speaker's name and a timestamp.
+  </Card>
+  <Card title="Confidence %" icon="chart-bar">
+    How confident the model is in this proposal, from 0 to 100.
+  </Card>
+  <Card title="Impact level" icon="triangle-exclamation">
+    **High**, **medium**, or **low** — the model's assessment of how significantly the change affects the project.
+  </Card>
+  <Card title="Firm vs tentative" icon="scale-balanced">
+    **Firm** proposals were stated as facts or commitments. **Tentative** proposals were hedged, conditional, or still under discussion.
+  </Card>
+</CardGroup>
+
+The `Proposal` type from the source captures all of these fields:
+
+```ts
+// types.ts
+export interface Proposal {
+  id: string
+  reportId: string
+  meetingId: string
+  category: ProposalCategory
+  op: ProposalOp           // 'create' | 'update' | 'close' | 'supersede' | 'flag'
+  targetItemId: string | null
+  targetVersion: number | null
+  itemType: ItemType
+  title: string
+  body: string
+  owner: string
+  dueDate: string
+  speaker: string
+  strength: 'firm' | 'tentative'
+  confidence: number
+  impact: 'high' | 'medium' | 'low'
+  rationale: string
+  evidence: Evidence[]
+  status: ProposalStatus   // 'pending' | 'accepted' | 'rejected' | 'applied'
+}
+```
+
+## Evidence quotes
+
+Each proposal is backed by one or more `Evidence` entries — verbatim quotes from the transcript, each with a speaker name and a timestamp:
+
+```ts
+// types.ts
+export interface Evidence {
+  segmentId: string
+  quote: string
+  speaker: string
+  t: number   // seconds from the start of the meeting
+}
+```
+
+Clicking a quote in the Impact Report **scrolls the transcript pane to that exact segment** and highlights it for two seconds. This lets you read the surrounding context and verify that the proposal faithfully represents what was said.
+
+## Dropped proposals
+
+The `Report` type includes a `droppedCount` field:
+
+```ts
+// types.ts
+export interface Report {
+  id: string
+  meetingId: string
+  createdAt: string
+  model: string
+  summary: string
+  droppedCount: number   // proposals rejected by evidence validation
+}
+```
+
+`droppedCount` records how many proposals the model generated that were then discarded because their quoted text could not be matched against any real transcript segment. A small dropped count is normal; a large one may mean the model was uncertain or the transcript has gaps. Dropped proposals never appear in the report.
+
+## Re-analyzing
+
+You can request a fresh analysis at any time from the meeting page header — for example, after relabeling speakers, correcting transcript errors, or simply wanting to try a different model:
+
+- If the meeting has no report yet, click **Analyze impact**.
+- If a report already exists, click **Re-analyze** to replace it.
+
+Re-analysis runs the same pipeline as the automatic post-meeting pass: it reads the current transcript and project state, generates proposals, validates evidence, and saves a new report.
+
+<Note>
+  The report records which model generated it in the `model` field of the `Report` row. This is shown in the meeting page header so you always know which AI produced the analysis — useful when comparing results across models or after changing your LLM provider in Settings.
+</Note>
+
+## Pipeline stepper
+
+Every meeting page shows a five-step progress indicator that tells you exactly where the meeting is in the post-recording pipeline:
+
+<Steps>
+  <Step title="Captured">
+    The recording has finished and audio files are saved to disk.
+  </Step>
+  <Step title="Transcribed">
+    Both audio streams have been transcribed and the transcript is ready to read. Meeting status: `ready`.
+  </Step>
+  <Step title="Analyzed">
+    The AI has run the impact analysis and the Impact Report is ready for review. Meeting status: `analyzed`.
+  </Step>
+  <Step title="Reviewed">
+    You have accepted, edited, or rejected individual proposals. Accepted proposals are ready to apply.
+  </Step>
+  <Step title="Applied">
+    You clicked **Apply** and Clerisy wrote a new versioned project state snapshot. Meeting status: `applied`.
+  </Step>
+</Steps>
+
+The stepper is always visible at the top of the meeting page. The current step is highlighted; completed steps are marked with a check. If an error occurs at any step — for example, a transcription failure — the stepper shows the error and offers a retry.

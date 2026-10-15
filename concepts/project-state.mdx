@@ -1,0 +1,172 @@
+---
+title: "Project State: The Living Record of Your Project"
+sidebarTitle: "Project State"
+description: "Clerisy keeps a versioned, living project state — typed items with owners, due dates, and a full history of which meeting changed them and why."
+---
+
+Project state is Clerisy's central idea: a structured board of everything that is known about a project, kept up to date as meetings happen. Each item has a type, a status, an owner, and a complete history linking every change back to the meeting where it was decided and the words that were spoken. When you apply an Impact Report, the state doesn't overwrite itself — it creates a new numbered version, so you can always see how the project evolved meeting by meeting.
+
+## Item types
+
+Every item on the board belongs to one of six typed categories. The type tells Clerisy what kind of change to propose when it sees something relevant in a transcript, and it keeps the board scannable at a glance.
+
+<CardGroup cols={3}>
+  <Card title="Requirements" icon="list-check">
+    Functional and non-functional requirements — what the project must do or achieve. Scope changes land here too.
+  </Card>
+  <Card title="Decisions" icon="gavel">
+    Firm commitments and conclusions made in a meeting — what was agreed, not just discussed.
+  </Card>
+  <Card title="Tasks / Action items" icon="circle-check">
+    Work items assigned to an owner, optionally with a due date. These are the things someone said they would do.
+  </Card>
+  <Card title="Risks & Blockers" icon="triangle-exclamation">
+    Threats to the project and things actively stopping progress. Blockers are treated as risks with higher urgency.
+  </Card>
+  <Card title="Deadlines & Milestones" icon="calendar">
+    Dates that matter: launch targets, review gates, external commitments. Timeline changes create or update these.
+  </Card>
+  <Card title="Open Questions" icon="circle-question">
+    Questions raised but not yet resolved. Conflicts with existing state also become open questions until resolved.
+  </Card>
+</CardGroup>
+
+## Item fields
+
+Each item stored in the database maps to the following fields.
+
+<ParamField path="id" type="string" required>
+  A unique identifier (UUID) for this item, stable across versions.
+</ParamField>
+
+<ParamField path="projectId" type="string" required>
+  The project this item belongs to.
+</ParamField>
+
+<ParamField path="type" type="ItemType" required>
+  One of `requirement`, `decision`, `task`, `risk`, `deadline`, or `question`.
+</ParamField>
+
+<ParamField path="title" type="string" required>
+  Short, scannable title — one line that describes what this item is.
+</ParamField>
+
+<ParamField path="body" type="string">
+  Longer description or notes. May span multiple lines.
+</ParamField>
+
+<ParamField path="status" type="ItemStatus" required>
+  Lifecycle state: `open` (active), `done` (completed or resolved), `superseded` (replaced by a newer item), or `cancelled` (no longer relevant). Superseded and cancelled items are hidden from the board by default but kept for history.
+</ParamField>
+
+<ParamField path="owner" type="string">
+  The person responsible for this item. Populated from the transcript when a name is mentioned.
+</ParamField>
+
+<ParamField path="dueDate" type="string">
+  ISO 8601 date string (`YYYY-MM-DD`) if a date was stated or clearly implied in the meeting.
+</ParamField>
+
+<ParamField path="version" type="number" required>
+  Increments every time the item is updated. Used by the approval flow to detect when an item changed since a report was generated.
+</ParamField>
+
+<ParamField path="createdAt" type="string" required>
+  ISO timestamp of when the item was first created.
+</ParamField>
+
+<ParamField path="updatedAt" type="string" required>
+  ISO timestamp of the most recent change to the item.
+</ParamField>
+
+## Item history
+
+Every item carries a complete audit trail. Each entry records which meeting caused the change, what was said, who said it, and a short summary of what changed. You can open an item's history panel to see the full chain of events — useful when you want to know why a deadline moved or who owns something.
+
+<ResponseField name="id" type="string">
+  Unique identifier for this history entry.
+</ResponseField>
+
+<ResponseField name="itemId" type="string">
+  The item this entry belongs to.
+</ResponseField>
+
+<ResponseField name="meetingId" type="string | null">
+  The meeting that caused this change, or `null` for manual edits made directly on the board.
+</ResponseField>
+
+<ResponseField name="meetingTitle" type="string | null">
+  Display title of the meeting, joined at query time for convenience.
+</ResponseField>
+
+<ResponseField name="summary" type="string">
+  A short description of what changed, for example `"Updated: dueDate"` or `"Created (action item)"`.
+</ResponseField>
+
+<ResponseField name="speaker" type="string">
+  The name of the person who made the statement that drove this change, as it appears in the transcript.
+</ResponseField>
+
+<ResponseField name="quote" type="string">
+  A verbatim excerpt from the transcript — the exact words that justified this change. Clicking a quote in the history panel jumps to that line in the meeting's transcript.
+</ResponseField>
+
+<ResponseField name="at" type="string">
+  ISO timestamp of when this history entry was recorded.
+</ResponseField>
+
+## State versions
+
+Applying an Impact Report doesn't overwrite the current state — it creates a new `StateVersion`, a snapshot that records every item that changed and what changed about it. Versions are linked to the meeting that produced them, so the Change history tab shows a timeline of how the project evolved.
+
+<ResponseField name="id" type="string">
+  Unique identifier for this snapshot.
+</ResponseField>
+
+<ResponseField name="projectId" type="string">
+  The project this version belongs to.
+</ResponseField>
+
+<ResponseField name="meetingId" type="string | null">
+  The meeting whose Impact Report was applied to produce this version. `null` for versions created manually.
+</ResponseField>
+
+<ResponseField name="meetingTitle" type="string | null">
+  Display title of the meeting, resolved at query time.
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO timestamp of when this version was created.
+</ResponseField>
+
+<ResponseField name="changes" type="array">
+  An ordered list of every item operation in this version. Each entry has `op` (`create`, `update`, `close`, `supersede`, or `flag`), `itemId`, `itemType`, `title`, a `before` snapshot of changed fields, and an `after` snapshot of the new values.
+</ResponseField>
+
+## Stakeholders
+
+Stakeholders are the people involved in your project. Adding them helps Clerisy attribute transcript speech to real names rather than generic speaker labels, and it makes owners in proposals more accurate.
+
+<ResponseField name="id" type="string">
+  Unique identifier.
+</ResponseField>
+
+<ResponseField name="projectId" type="string">
+  The project this stakeholder is associated with.
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Full name as it should appear in proposals and reports.
+</ResponseField>
+
+<ResponseField name="role" type="string">
+  Job title or role on the project, for example `"Product Manager"` or `"Lead Engineer"`.
+</ResponseField>
+
+<ResponseField name="email" type="string">
+  Email address, used when sharing reports.
+</ResponseField>
+
+<Tip>
+  Add stakeholders and seed the board with known requirements, decisions, and open questions before your first meeting. The AI compares the transcript against whatever state exists, so a richer starting state produces more precise, lower-noise proposals.
+</Tip>

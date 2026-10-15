@@ -1,0 +1,99 @@
+---
+title: "Meeting Capture: How Clerisy Records Your Meetings"
+sidebarTitle: "Meeting Capture"
+description: "Clerisy records meetings without a bot, capturing mic and system audio as two streams, then transcribes and merges them into a speaker-labelled transcript."
+---
+
+Clerisy records meetings without a bot. It captures audio directly on your Windows machine — your microphone as one stream and the other participants' audio from your system output as a second stream. Because everything stays on your computer until you choose to send it to a cloud transcription service, there is nothing to install on a meeting platform and no bot appearing in your call.
+
+## How capture works
+
+When you start recording, Clerisy creates a folder at `%APPDATA%\Clerisy\audio\<meeting-id>\` and writes two separate `.webm` files as the meeting runs:
+
+- `mic.webm` — your microphone; this is what you said.
+- `system.webm` — your system audio output; this is what you heard from the other participants.
+
+Keeping the streams separate means the transcription step can label them differently and the echo-removal logic can compare them. After recording stops, both files are transcribed in parallel, then merged into a single speaker-labelled transcript.
+
+## Meeting sources
+
+The `sourceApp` field on a meeting records which application was using the microphone when the recording started. Clerisy works with any app that routes audio through the Windows audio stack:
+
+- Zoom
+- Microsoft Teams
+- Google Meet (in any browser)
+- Slack
+- Discord
+- Any other application that claims the Windows microphone
+
+The source app is shown on the meeting card and included in exported reports.
+
+## Auto-detection
+
+Clerisy watches the Windows microphone-usage privacy registry. When a known meeting application claims the microphone, Clerisy notices and offers to start recording via the floating widget or a system notification. When that app releases the microphone — because the call ended — recording stops automatically. You can disable auto-detection in **Settings › Recording**.
+
+The app also starts with Windows (installed builds only) so that it is already running in the tray when a meeting begins, with no need to open it first. You can turn this off in **Settings › General**.
+
+## Floating widget
+
+While a meeting is recording, a small always-on-top window sits above your meeting app. It shows:
+
+- A running **timer** for the recording duration.
+- The **latest transcript line** as it is produced, so you can see transcription is working.
+- A **Mark moment** button (`Ctrl+Shift+D`) that flags the current timestamp as important — the AI weights marked moments more heavily during analysis.
+- A **Stop** button to end the recording.
+- An **Open Clerisy** button to bring the main window forward.
+
+The widget can be dragged anywhere on screen and remembers its position between meetings. You can turn it off entirely in **Settings › Recording**.
+
+## Meeting statuses
+
+A meeting moves through a defined lifecycle from the moment recording starts to when its changes are applied to the project.
+
+| Status | Meaning |
+|---|---|
+| `recording` | Audio is actively being captured and live transcript chunks are being produced. |
+| `transcribing` | Recording has stopped; the full audio files are being transcribed for final speaker labels. |
+| `ready` | Transcription is complete (or was skipped). The meeting can be analyzed. |
+| `analyzing` | The AI is comparing the transcript against the current project state. |
+| `analyzed` | The Impact Report is ready for review. Proposals are pending acceptance or rejection. |
+| `applied` | Accepted proposals have been applied and a new project state version has been created. |
+
+If Clerisy closes while a meeting is `recording` or `transcribing`, the meeting recovers to `ready` on next launch with a note explaining what happened, so the saved audio can be transcribed on request.
+
+## Live transcript
+
+Transcription happens in two passes:
+
+1. **Live preview** — roughly every 30 seconds, the latest audio chunk is transcribed and the new lines appear in the floating widget and on the meeting page. On a slow computer with the local model, chunks that fall too far behind are skipped rather than queued up.
+
+2. **Full-file transcription** — after recording stops, both complete audio files are transcribed from start to finish. This pass produces consistent speaker labels across the whole meeting and replaces the live preview lines. The meeting page shows per-stream progress (microphone and system audio) as it runs.
+
+The final transcript merges both streams and removes echoes — lines where the microphone picked up speech that also appeared in the system audio are deduplicated automatically.
+
+## Import options
+
+If you have an existing transcript or recording, you can bring it into Clerisy without recording live.
+
+<Tabs>
+  <Tab title="Paste transcript">
+    On any project's meetings list, choose **Import transcript** and paste plain text. Clerisy parses speaker labels in common formats (`Speaker Name: text`, `[HH:MM:SS] Name: text`) and creates a ready-to-analyze meeting from the result.
+  </Tab>
+  <Tab title="Import file">
+    Choose **Import transcript file** to load a saved transcript. Supported formats:
+
+    - `.vtt` — WebVTT (used by Google Meet, browser recordings)
+    - `.srt` — SubRip subtitle files
+    - Zoom `.txt` exports
+    - Plain `.md` or `.txt` files with speaker labels
+
+    The file is parsed locally; nothing is sent anywhere.
+  </Tab>
+  <Tab title="Import audio or video">
+    Choose **Import audio / video** to transcribe a recording file. Supported formats: `mp3`, `m4a`, `wav`, `webm`, `ogg`, `mp4`. The file is sent to whichever speech-to-text provider you have configured in Settings. The resulting transcript is treated the same as one recorded live.
+  </Tab>
+</Tabs>
+
+<Note>
+  The `expectedSpeakers` field tells the local speech-to-text model exactly how many distinct voices to look for in the system audio stream. Set it when you start a recording (or use **Detect speakers again** on a meeting page) to get cleaner, more consistent speaker labels. Without it, the local model clusters voices by acoustic distance, which sometimes splits one person into two labels.
+</Note>

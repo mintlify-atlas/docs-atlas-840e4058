@@ -1,0 +1,168 @@
+---
+title: "Speech-to-Text: Local and Cloud Transcription Options"
+sidebarTitle: "Transcription"
+description: "Choose free local transcription or cloud STT — Deepgram, OpenAI Whisper, or Groq — for better speed, accuracy, and multi-language meeting support."
+---
+
+Clerisy uses a two-pass transcription approach. During recording, audio is broken into roughly 30-second chunks and transcribed in near-real time so you can follow along in the transcript pane. When the recording ends, both the mic and system audio files are transcribed again in full — this second pass produces consistent speaker labels across the whole meeting and replaces the chunked preview. You can choose between a free local engine that runs entirely on your machine or one of three cloud providers, depending on your accuracy, language, and privacy requirements.
+
+## Local transcription (free)
+
+The local engine is powered by **sherpa-onnx** and runs entirely on your Windows machine. No audio ever leaves your computer, and no API key is required.
+
+<CardGroup cols={2}>
+  <Card title="Cost" icon="circle-dollar">
+    Free. No API key, no usage billing.
+  </Card>
+  <Card title="Download" icon="download">
+    One-time 665 MB download from Settings → Transcription before first use.
+  </Card>
+  <Card title="Language" icon="language">
+    English only. Use a cloud provider or language routing for other languages.
+  </Card>
+  <Card title="Speaker labels" icon="users">
+    Labels other participants as Speaker 1, Speaker 2… after the meeting ends.
+  </Card>
+</CardGroup>
+
+When your computer is slow, the local engine keeps only the newest waiting chunk per stream and skips older ones rather than falling further behind. The live preview may be gappy on slower machines, but the final full-file pass always completes.
+
+## Cloud providers
+
+<Tabs>
+  <Tab title="Deepgram">
+    Deepgram's `nova-3` model runs speaker diarization natively, so it can separate multiple participants without a separate voice-matching step. It is the best choice for meetings with several speakers and accepts files up to **2 GB** — far more than the 25 MB limit of Whisper-based providers.
+
+    ```text
+    Provider: deepgram
+    Default model: nova-3
+    Speaker separation: built-in (system stream only)
+    Max upload: 2048 MB
+    ```
+
+    Set your Deepgram API key in **Settings → Transcription → Deepgram API key**.
+  </Tab>
+  <Tab title="OpenAI Whisper">
+    OpenAI's `whisper-1` endpoint offers high accuracy across dozens of languages and is a good general-purpose choice when you do not need speaker labels from the provider itself. Clerisy labels the system stream segments as "Others" and your mic stream as your configured name.
+
+    ```text
+    Provider: openai
+    Default model: whisper-1
+    Speaker separation: none (labels as "Others")
+    Max upload: 25 MB
+    ```
+
+    Set your OpenAI API key in **Settings → Transcription → OpenAI API key**.
+  </Tab>
+  <Tab title="Groq Whisper">
+    Groq runs `whisper-large-v3-turbo` on dedicated inference hardware, making it the fastest of the Whisper-based options. It uses the same OpenAI-compatible API format and has the same 25 MB per-file limit.
+
+    ```text
+    Provider: groq
+    Default model: whisper-large-v3-turbo
+    Speaker separation: none (labels as "Others")
+    Max upload: 25 MB
+    ```
+
+    Set your Groq API key in **Settings → Transcription → Groq API key**.
+  </Tab>
+</Tabs>
+
+## Language routing
+
+The `sttLanguage` setting tells Clerisy what language your meetings are in:
+
+| Value | Behaviour |
+|---|---|
+| `auto` | Let the provider detect the language automatically |
+| `en` | Force English; passed as the `language` hint to Whisper providers |
+| `hinglish` | Route to the Hindi/Hinglish path (cloud only) |
+
+Because the local engine only understands English, Clerisy provides a **cloud fallback** for Hindi and Hinglish meetings. Set `sttCloudFallback` in **Settings → Transcription** to a cloud provider (Deepgram, OpenAI, or Groq). When `sttLanguage` is `hinglish`, that provider is used instead of the local engine, while English meetings continue offline.
+
+<Warning>
+  Local transcription understands **English only**. If your meetings are in Hindi, Hinglish, or any other language, configure a cloud provider in Settings → Transcription and set `sttLanguage` to `auto` or `hinglish`. Transcribing non-English audio with the local engine will produce garbled or empty output.
+</Warning>
+
+## Live transcript
+
+During recording, audio is split into chunks (default 30 seconds, configurable via `chunkSeconds`). Each chunk is transcribed and its segments are appended to the transcript in real time — you can see new lines appear in the transcript pane and in the floating widget as the meeting progresses.
+
+After recording stops, the complete `mic.webm` and `system.webm` files are transcribed in a single request. This full-file pass replaces the chunked preview and produces more consistent speaker labels, because the model sees the whole recording at once rather than isolated windows.
+
+## Import formats
+
+If you already have a transcript — or want to add a past meeting — you can import it without re-recording.
+
+<Accordion title=".vtt (WebVTT)">
+  Standard subtitle format exported by most video platforms. Clerisy reads timestamps and speaker cues.
+
+  ```vtt
+  WEBVTT
+
+  00:00:05.000 --> 00:00:10.000
+  <v Priya>We need to decide on the launch date before end of week.
+  ```
+</Accordion>
+
+<Accordion title=".srt (SubRip)">
+  Numbered subtitle format. Speaker names are read from inline cues if present.
+
+  ```srt
+  1
+  00:00:05,000 --> 00:00:10,000
+  Priya: We need to decide on the launch date before end of week.
+  ```
+</Accordion>
+
+<Accordion title="Zoom .txt">
+  Zoom's built-in transcript export. Lines begin with a timestamp and the participant's display name.
+
+  ```text
+  00:00:05 Priya: We need to decide on the launch date before end of week.
+  00:00:12 Tom: Agreed — let's target the 15th.
+  ```
+</Accordion>
+
+<Accordion title="Plain-text transcripts">
+  Any transcript where each line starts with a speaker name followed by a colon, or where timestamps precede the text. Clerisy's parser extracts what it can.
+
+  ```text
+  Priya: We need to decide on the launch date before end of week.
+  Tom: Agreed — let's target the 15th.
+  ```
+</Accordion>
+
+<Accordion title="Audio files (mp3, m4a, wav, webm, ogg)">
+  Clerisy sends the file to your configured STT provider and creates a new meeting from the result. Requires a speech-to-text provider to be configured. File-size limits apply: OpenAI and Groq accept up to 25 MB; Deepgram accepts up to 2 GB.
+</Accordion>
+
+<Accordion title="Video files (mp4)">
+  Same as audio import — the file is sent to your STT provider and the audio track is transcribed. Only the audio is processed; the video frames are not used.
+</Accordion>
+
+Use **Import transcript** or **Import audio/video** from the project's Meetings list to add a file.
+
+## Transcription progress
+
+While the final transcription runs, the meeting page shows a progress indicator for each stream that has a recording. The stages are:
+
+<Steps>
+  <Step title="Waiting">
+    The stream is queued while the other stream starts loading.
+  </Step>
+  <Step title="Decoding">
+    The audio file is being decoded from WebM format.
+  </Step>
+  <Step title="Transcribing">
+    Local: segments processed / total shown as a progress bar. Cloud: displays "Sending to [provider]…".
+  </Step>
+  <Step title="Speakers">
+    Local only — the voice-matching model is assigning speaker labels.
+  </Step>
+  <Step title="Done / Failed">
+    Transcription finished successfully, or an error occurred (shown with the reason).
+  </Step>
+</Steps>
+
+The two bars (mic and system) run in parallel. Once both reach **Done**, the meeting status advances to `ready` and AI analysis begins automatically.

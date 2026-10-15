@@ -1,0 +1,145 @@
+---
+title: "AI Model Configuration: Connect Your LLM Provider"
+sidebarTitle: "AI Models"
+description: "Clerisy is bring-your-own-model. Connect Anthropic, OpenAI, Google, OpenRouter, Ollama, or any OpenAI-compatible server in Settings → AI Model."
+---
+
+Clerisy does not bundle or proxy an AI model — you bring your own. Every Impact Report and "Ask the project" answer runs through the model you configure in **Settings → AI Model**, using your own API key (or a locally running server). This means you control cost, privacy, and model choice. Six providers are supported out of the box, from fully local Ollama to major cloud APIs, all speaking the same Vercel AI SDK interface under the hood.
+
+## Supported providers
+
+<CardGroup cols={2}>
+  <Card title="Anthropic (Claude)" icon="robot">
+    Industry-leading reasoning and instruction-following. Recommended for most users. Default model: `claude-sonnet-5-5`.
+  </Card>
+  <Card title="OpenAI" icon="microchip">
+    GPT family models. Default model: `gpt-5`. Uses the same API key as OpenAI Whisper STT if both are configured.
+  </Card>
+  <Card title="Google (Gemini)" icon="google">
+    Gemini models with large context windows. Default model: `gemini-2.5-pro`. Requires a Google AI Studio API key.
+  </Card>
+  <Card title="OpenRouter" icon="shuffle">
+    Access hundreds of models from a single API key. Default model: `anthropic/claude-sonnet-5.5`.
+  </Card>
+  <Card title="Ollama (local)" icon="house-laptop">
+    Run models entirely on your own machine — no API key, no data leaves your computer. Default model: `qwen3:14b`. Requires Ollama running locally.
+  </Card>
+  <Card title="OpenAI-compatible" icon="plug">
+    Any server that speaks the OpenAI chat completions API: LM Studio, vLLM, text-generation-webui, and others. Set a base URL and an optional key.
+  </Card>
+</CardGroup>
+
+## Configuring each provider
+
+Open **Settings → AI Model** and set the three fields below. The table shows the defaults from `DEFAULT_MODELS` in `types.ts`.
+
+### `llmProvider`
+
+Choose your provider from the dropdown. This determines which SDK adapter is used and whether a key is required.
+
+| Provider value | Requires API key | Requires base URL |
+|---|---|---|
+| `anthropic` | Yes | No |
+| `openai` | Yes | No |
+| `google` | Yes | No |
+| `openrouter` | Yes | No |
+| `ollama` | No | Optional (defaults to `http://localhost:11434/v1`) |
+| `openai-compatible` | Optional | **Yes** |
+
+### `llmModel`
+
+The model name to pass to the provider. Each provider has a sensible default:
+
+```typescript
+export const DEFAULT_MODELS: Record<LlmProvider, string> = {
+  anthropic: 'claude-sonnet-5-5',
+  openai: 'gpt-5',
+  google: 'gemini-2.5-pro',
+  openrouter: 'anthropic/claude-sonnet-5.5',
+  ollama: 'qwen3:14b',
+  'openai-compatible': ''
+}
+```
+
+Type any valid model name supported by your provider. For OpenRouter, use the full routing path such as `meta-llama/llama-3.1-70b-instruct`. For OpenAI-compatible servers, check the server's own documentation for what model names it exposes.
+
+### `llmBaseUrl`
+
+Only used by `ollama` and `openai-compatible`. Leave blank for all other providers.
+
+<Tabs>
+  <Tab title="Ollama">
+    Ollama's default OpenAI-compatible endpoint is `http://localhost:11434/v1`. If you run Ollama on a different port or host, set `llmBaseUrl` to match. If you leave this blank, Clerisy falls back to the default automatically.
+
+    ```typescript
+    case 'ollama':
+      return {
+        model: createOpenAICompatible({
+          name: 'ollama',
+          baseURL: s.llmBaseUrl || 'http://localhost:11434/v1',
+          supportsStructuredOutputs: true
+        })(modelId),
+        label
+      }
+    ```
+  </Tab>
+  <Tab title="OpenAI-compatible">
+    Set `llmBaseUrl` to your server's root, including the `/v1` path segment if required. For example, LM Studio's default is `http://localhost:1234/v1`. If this field is blank, Clerisy will refuse to run analysis.
+
+    ```typescript
+    case 'openai-compatible':
+      if (!s.llmBaseUrl)
+        throw new Error(
+          'Set a base URL for the OpenAI-compatible provider (e.g. LM Studio http://localhost:1234/v1).'
+        )
+      return {
+        model: createOpenAICompatible({
+          name: 'custom',
+          baseURL: s.llmBaseUrl,
+          apiKey: key || undefined,
+          supportsStructuredOutputs: true
+        })(modelId),
+        label
+      }
+    ```
+  </Tab>
+</Tabs>
+
+## API keys
+
+Enter your API key in the **Settings → AI Model** key field for the active provider. Clerisy encrypts it immediately with **Windows DPAPI** via Electron's `safeStorage` and writes the ciphertext to `secrets.json`. The plaintext never touches the renderer process and is never written to disk unencrypted.
+
+```typescript
+export function setSecret(name: SecretName, value: string): void {
+  if (!safeStorage.isEncryptionAvailable())
+    throw new Error('OS encryption is not available; cannot store API keys safely.')
+  const secrets = readSecrets()
+  if (value) secrets[name] = safeStorage.encryptString(value).toString('base64')
+  else delete secrets[name]
+  writeJsonAtomic(secretsFile(), secrets)
+}
+```
+
+The `hasKey` field on the `Settings` object tells the UI which providers already have a key saved, without ever exposing the key value itself:
+
+```typescript
+export interface Settings {
+  // ...
+  // which secrets are stored (values never leave the main process)
+  hasKey: Partial<Record<LlmProvider | SttProvider, boolean>>
+}
+```
+
+To remove a key, clear the field and save. To rotate a key, simply paste the new one and save — the old ciphertext is overwritten.
+
+<Warning>
+  Ollama must be running on your machine before Clerisy can use it. Start Ollama with `ollama serve` (or let the Ollama Desktop app manage it), and make sure the model you want is already pulled — run `ollama pull qwen3:14b` (or whichever model you configured) in a terminal first. Clerisy will show a connection error in the analysis step if Ollama is not reachable.
+</Warning>
+
+## Testing your connection
+
+After saving your provider, model, and key, click **Test connection** in **Settings → AI Model**. Clerisy sends a short prompt to the model and reports success or the exact error message it received. This is the fastest way to catch a wrong key, a misspelled model name, or a server that isn't reachable.
+
+<Note>
+  The model identifier is recorded in every Impact Report at the time of analysis. You can always see which model produced a specific report, which matters for auditability as you switch between providers or upgrade model versions.
+</Note>

@@ -1,0 +1,143 @@
+---
+title: "Speech-to-Text Setup: Local and Cloud Providers"
+sidebarTitle: "Speech-to-Text"
+description: "Configure transcription in Clerisy: choose free local processing, Deepgram speaker separation, OpenAI Whisper, or Groq for fast cloud transcription."
+---
+
+Clerisy can transcribe your meeting recordings in several ways. The local provider runs entirely on your computer after a one-time model download — no data ever leaves the machine and there is no ongoing cost. Cloud providers (Deepgram, OpenAI Whisper, Groq) trade privacy for accuracy, speed, or language support. You configure your provider in **Settings → Transcription**, and you can change it at any time — the choice affects the next meeting, not past ones.
+
+## Choosing a provider
+
+<Tabs>
+  <Tab title="Local (free)">
+    The local provider uses **sherpa-onnx** to transcribe audio entirely on your computer. It requires a one-time 665 MB model download, supports **English only**, and does not need an API key. Once the model is installed, meetings are transcribed offline with no upload and no recurring cost.
+
+    Set `sttProvider` to `'local'` in **Settings → Transcription**, then click **Download model** to fetch the model files. A progress bar shows the download and verification stages.
+
+    Local transcription also supports **speaker labels**: after the meeting, a second model pass clusters voices and assigns Speaker 1, Speaker 2… labels to participants other than yourself. See the "Local speaker labels" section below.
+
+    <Info>
+      On a slow or older computer, Clerisy may skip live 30-second preview chunks during recording rather than fall behind. The final full-file transcription always runs after the meeting ends.
+    </Info>
+  </Tab>
+  <Tab title="Deepgram">
+    Deepgram provides the best speaker separation for multi-participant meetings. It diarizes the system audio stream, assigning each utterance to a numbered speaker automatically. Recommended when you have three or more participants or when speaker accuracy matters more than privacy.
+
+    Set `sttProvider` to `'deepgram'` and enter your Deepgram API key. Deepgram accepts audio files up to 2 GB, making it suitable for long recordings where OpenAI and Groq would be too restrictive.
+
+    ```typescript
+    export const MAX_UPLOAD_BYTES: Record<CloudSttProvider, number> = {
+      openai: 25 * MB,
+      groq: 25 * MB,
+      deepgram: 2048 * MB
+    }
+    ```
+
+    Clerisy uses Deepgram's `nova-3` model by default with `smart_format`, `punctuate`, `utterances`, and `diarize` enabled on the system stream.
+  </Tab>
+  <Tab title="OpenAI Whisper">
+    OpenAI Whisper offers high accuracy and supports a wide range of languages beyond English. It is a good choice if you already have an OpenAI API key configured for your LLM — Clerisy reads the same key for both.
+
+    Set `sttProvider` to `'openai'`. The default model is `whisper-1`. OpenAI accepts files up to 25 MB; for longer meetings, switch to Deepgram.
+
+    Whisper does not natively diarize speakers. The system audio stream's segments are labelled `'Others'` rather than individual speaker numbers.
+  </Tab>
+  <Tab title="Groq Whisper">
+    Groq runs the `whisper-large-v3-turbo` model on its own inference hardware, making it significantly faster than OpenAI's hosted Whisper for the same audio. A good choice when you want cloud Whisper accuracy with lower latency.
+
+    Set `sttProvider` to `'groq'` and enter your Groq API key. Like OpenAI, the file size limit is 25 MB.
+
+    ```typescript
+    const DEFAULT_STT_MODEL = {
+      deepgram: 'nova-3',
+      openai: 'whisper-1',
+      groq: 'whisper-large-v3-turbo'
+    } as const
+    ```
+  </Tab>
+  <Tab title="None">
+    Set `sttProvider` to `'none'` to disable automatic transcription entirely. Recordings are still saved to disk after the meeting, but they are not sent for transcription. You can still import a transcript manually (`.vtt`, `.srt`, Zoom `.txt`, plain text, or an audio/video file) from the meeting page.
+
+    This is useful when you want to capture audio for your own records without incurring transcription cost or time.
+  </Tab>
+</Tabs>
+
+## Language settings
+
+### `sttLanguage`
+
+Controls what language Clerisy tells the STT provider to expect. The default in `settings.ts` is `'en'`.
+
+| Value | Behaviour |
+|---|---|
+| `auto` | Let the provider detect the language automatically. Whisper may mis-detect short segments when set to auto. |
+| `en` | English. Stops Whisper from guessing other languages on short English segments. |
+| `hinglish` | Hindi/Hinglish. Routes the meeting to the cloud fallback provider even if the main provider is `local`. |
+
+### `sttCloudFallback`
+
+When `sttProvider` is `local` and `sttLanguage` is `hinglish`, Clerisy cannot use the local model (which is English-only). `sttCloudFallback` names the cloud provider to use instead for those meetings.
+
+Set it to `'deepgram'`, `'openai'`, or `'groq'` to enable automatic fallback. Set it to `'none'` (the default) to skip transcription for Hindi/Hinglish meetings rather than send audio to the cloud.
+
+```typescript
+/** with the local provider: the cloud provider for meetings in Hindi or Hinglish ('none' = don't transcribe them) */
+sttCloudFallback: CloudSttProvider | 'none'
+```
+
+## Local speaker labels
+
+When using the local provider, Clerisy can run a second model pass after the meeting to cluster voices in the system audio stream and assign **Speaker 1**, **Speaker 2**, … labels to the other participants.
+
+<ParamField body="localSpeakerLabels" type="boolean" default="true">
+  Enable or disable post-meeting speaker label assignment for local transcription. Speaker labels are applied to the system audio stream only; your microphone stream is always labelled with your `selfName`.
+</ParamField>
+
+For best results, tell Clerisy how many other people are in the meeting when you start recording (the **expected speakers** field). The speaker-label model then finds exactly that many voices rather than guessing. If you forget, you can set the count later and click **Detect speakers again** on the meeting page.
+
+Use **Merge speakers** on a meeting page to join two clusters that belong to the same person, and **Map speakers** to assign real names to Speaker 1, 2, etc.
+
+<Note>
+  Speaker labels also work with Deepgram. Deepgram diarizes during transcription rather than in a separate pass, so its labels are available immediately when the transcript arrives.
+</Note>
+
+## Model management
+
+The local transcription model is approximately **665 MB** and is downloaded once to `%APPDATA%\Clerisy`. Clerisy verifies the files after download; the `LocalModelStatus` type tracks each stage:
+
+```typescript
+export interface LocalModelStatus {
+  label: string
+  /** download size of everything it needs */
+  bytes: number
+  /** what's left to download (files missing or unfinished) */
+  remainingBytes: number
+  /** the transcription model is there */
+  installed: boolean
+  /** the speaker-label models are there too */
+  speakerLabels: boolean
+  download:
+    | { state: 'idle' }
+    | { state: 'downloading' | 'verifying'; received: number; total: number }
+    | { state: 'error'; message: string }
+}
+```
+
+<Steps>
+  <Step title="Open Settings → Transcription">
+    Select **Local (free)** as the provider. The model status area shows whether the model is already installed.
+  </Step>
+  <Step title="Click Download model">
+    Clerisy fetches all required model files in the background, showing download progress and a verification step.
+  </Step>
+  <Step title="Test transcription">
+    Click **Test** in **Settings → Transcription** to run a short audio sample through the local model and confirm it produces output.
+  </Step>
+  <Step title="Free disk space (optional)">
+    To remove the local model and reclaim the 665 MB, click **Delete local model** in **Settings → Transcription**. The model files are deleted immediately. You can re-download at any time.
+  </Step>
+</Steps>
+
+<Note>
+  The `sttModel` setting lets you override the default model name for cloud Whisper providers. For example, set `sttModel` to `whisper-1` for OpenAI or `whisper-large-v3-turbo` for Groq. This field only applies to the active provider; the local model is not configurable by name.
+</Note>

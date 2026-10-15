@@ -1,0 +1,116 @@
+---
+title: "Meeting Recording: Capture Audio Without a Bot"
+sidebarTitle: "Recording"
+description: "Record meetings directly from your mic and system audio — no bot invite needed. Works with Zoom, Teams, Google Meet, Slack, Discord, and any other app."
+---
+
+Clerisy captures meetings by recording two separate audio streams on your Windows machine: your microphone and your system audio (everything else playing through your speakers). Because the recording happens locally, there is no bot to invite, no waiting room to pass, and nothing visible to other participants. The recording works with any meeting platform — Zoom, Teams, Google Meet in any browser, Slack, Discord, and others — as long as the audio passes through your computer.
+
+## Starting a recording
+
+Click the **Capture** button in the top bar to open the **Start Recording** dialog. Choose which project the meeting belongs to, enter a title, and optionally enter how many other people are in the meeting. That count helps the local speaker-labeling step find exactly the right number of voices.
+
+You can also start (and stop) a recording without touching Clerisy at all: press **Ctrl+Shift+M** from anywhere on your desktop. Clerisy listens for this global hotkey even when it is minimized to the tray.
+
+<Steps>
+  <Step title="Click Capture in the top bar">
+    Opens the Start Recording dialog where you choose a project and enter a meeting title.
+  </Step>
+  <Step title="Enter how many other people are in the meeting (optional)">
+    Helps the speaker-detection step find exactly that many voices in the system audio stream. You can skip this and run **Detect speakers again** from the meeting page afterward.
+  </Step>
+  <Step title="Click Start Recording (or press Ctrl+Shift+M)">
+    Both audio streams begin recording immediately. The floating widget appears on top of your meeting window.
+  </Step>
+</Steps>
+
+## Dual-stream capture
+
+Every recording produces two files in `%APPDATA%\Clerisy\audio\<meeting-id>\`:
+
+| File | What it captures |
+|---|---|
+| `mic.webm` | Your voice from the microphone |
+| `system.webm` | All other application audio — remote participants, shared video, etc. |
+
+Separating the streams lets Clerisy label your lines as "Me" (or whatever name you set in **Settings → Recording**) and number the other voices as Speaker 1, Speaker 2, and so on.
+
+Because the microphone is physically close to your speakers, it often picks up remote participants too. Clerisy runs **echo de-duplication** after each chunk: mic segments whose words largely overlap with system segments from the same time window are silently dropped so the same speech does not appear twice in the transcript.
+
+```ts
+// stt.ts — isEcho decides whether a mic segment duplicates system speech
+export function isEcho(mic: Timed, system: Timed[]): boolean {
+  const mw = words(mic.text)
+  if (mw.length === 0) return false
+  const sw = new Set(system.filter((sy) => sy.tEnd + 2 >= mic.tStart && sy.tStart - 2 <= mic.tEnd).flatMap((sy) => words(sy.text)))
+  return mw.filter((w) => sw.has(w)).length / mw.length > 0.6
+}
+```
+
+## Floating widget
+
+While a recording is active, Clerisy shows a small always-on-top window that sits in the corner of your screen so you can see it over your meeting app. You can drag it anywhere; it remembers its position between sessions.
+
+<CardGroup cols={2}>
+  <Card title="Timer" icon="clock">
+    Shows how long the current recording has been running.
+  </Card>
+  <Card title="Live transcript line" icon="subtitles">
+    Displays the most recent line from the live transcript so you can confirm speech is being captured.
+  </Card>
+  <Card title="Mark moment (Ctrl+Shift+D)" icon="star">
+    Stars the current timestamp. The AI weights marked moments more heavily during analysis.
+  </Card>
+  <Card title="Stop button" icon="stop">
+    Ends the recording and triggers the post-meeting pipeline automatically.
+  </Card>
+  <Card title="Open Clerisy" icon="arrow-up-right-from-square">
+    Brings the main Clerisy window to the front without stopping the recording.
+  </Card>
+</CardGroup>
+
+You can disable the floating widget entirely in **Settings → Recording**. When it is off, the recording pill in the Clerisy top bar still shows the timer and lets you stop.
+
+## Marking moments
+
+Press **Ctrl+Shift+D** (or click the star button in the floating widget) at any point during a recording to drop a timestamp marker. Markers are stored as `Mark` records linked to the meeting, and the analysis prompt weights the transcript segments near them more heavily — useful for flagging a decision the moment it is made or calling out an action item as soon as it is assigned.
+
+## Stopping a recording
+
+A recording ends when you:
+
+- Click **Stop** in the floating widget
+- Click the recording pill in the Clerisy top bar
+- Press **Ctrl+Shift+M** again
+
+As soon as the recording stops, Clerisy sets the meeting status to `transcribing` and the post-meeting pipeline starts automatically: it runs a full-file transcription of both streams, then launches AI analysis. You do not need to do anything else.
+
+## Expected speakers
+
+When you tell Clerisy how many people besides you are in the meeting, local speaker labels find **exactly** that many voices in the system audio. Without a count, the algorithm clusters by voice distance and may split one person into two labels. The count is stored on the `Meeting` record as `expectedSpeakers` and can also be supplied later:
+
+1. Open the meeting page.
+2. Click **Detect speakers again**.
+3. Enter the count and confirm.
+
+The maximum value is **30** (`MAX_EXPECTED_SPEAKERS` in `types.ts`).
+
+## Speaker management
+
+After transcription finishes, the meeting page offers three tools for cleaning up speaker labels:
+
+<Accordion title="Map speakers">
+  Assign real names to the numbered labels. "Speaker 1" becomes "Priya", "Speaker 2" becomes "Tom", and so on. Changes apply to every segment in the transcript immediately.
+</Accordion>
+
+<Accordion title="Merge speakers">
+  Join two labels that belong to the same person. If the local model split one voice into "Speaker 1" and "Speaker 3", merge them into a single label. This is equivalent to mapping both to the same name in one step.
+</Accordion>
+
+<Accordion title="Detect speakers again">
+  Re-runs only the local voice-matching step on the saved system-audio recording. The transcript text stays untouched; only the speaker labels are updated. Works even for meetings originally transcribed by Deepgram.
+</Accordion>
+
+<Note>
+  The `chunkSeconds` setting (default **30**) controls how long each live-preview chunk is. Shorter chunks mean the floating widget updates more often; longer chunks reduce the number of transcription requests during recording. You can change it in **Settings → Recording**.
+</Note>
